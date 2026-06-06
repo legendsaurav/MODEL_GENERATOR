@@ -1,0 +1,60 @@
+# MODEL_GENERATOR_V2 Model Architecture Configuration
+# Derived from Hunyuan3D-2.1 default settings.
+# This file defines model hyperparameters, not runtime inference settings.
+# Runtime settings (steps, resolution, etc.) are in configs/presets.py.
+
+model:
+  target: "core.dit_model.Hunyuan3DDiT"
+  params:
+    in_channels: 64
+    out_channels: 64
+    num_attention_heads: 16
+    attention_head_dim: 128
+    num_layers: 24
+    num_single_layers: 12
+    patch_size: 1
+    conditioning_embedding_out_dim: 2048
+    pooled_projection_dim: 2048
+    guidance_embeds: true
+    axes_dims_rope: [32, 32, 32]
+    axes_lens_rope: [256, 256, 256]
+
+vae:
+  target: "core.vae.shape_vae.ShapeVAE"
+  params:
+    latent_dim: 64
+    num_latent_tokens: 2048
+    embed_dim: 1024
+    num_heads: 16
+    depth: 12
+    decoder_depth: 12
+    num_freqs: 8
+    include_pi: true
+    use_ln_post: true
+
+conditioner:
+  target: "core.conditioner.ImageConditioner"
+  params:
+    model_name: "facebook/dinov2-giant"
+    freeze: true
+    output_dim: 2048
+    input_resolution: 518
+
+scheduler:
+  target: "diffusers.FlowMatchEulerDiscreteScheduler"
+  params:
+    shift: 1.0
+    num_train_timesteps: 1000
+
+image_processor:
+  target: "preprocessing.image_processor.ImageProcessor"
+  params:
+    target_size: 518
+    normalize: true
+    background_color: [255, 255, 255]
+
+# Surface extraction settings
+surface_extraction:
+  method: "marching_cubes"
+  iso_value: 0.0
+  padding: 0.1

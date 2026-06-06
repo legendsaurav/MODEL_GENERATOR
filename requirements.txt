@@ -1,0 +1,37 @@
+# MODEL_GENERATOR_V2 — Dependencies
+# Geometry-only 3D mesh generation based on Hunyuan3D-2.1
+# Texture dependencies (xatlas, Real-ESRGAN, etc.) have been removed.
+
+# ── Core ML ──────────────────────────────────────────────────────
+torch>=2.1.0
+torchvision>=0.16.0
+transformers>=4.48.0
+diffusers>=0.31.0
+accelerate>=0.25.0
+einops>=0.7.0
+safetensors>=0.4.0
+
+# ── 3D Processing ────────────────────────────────────────────────
+trimesh>=4.0.0
+pymeshlab>=2023.12
+pygltflib>=1.16.0
+scikit-image>=0.21.0
+
+# ── Image Processing ─────────────────────────────────────────────
+Pillow>=10.0.0
+opencv-python>=4.8.0
+rembg>=2.0.50
+onnxruntime>=1.16.0
+
+# ── Configuration ────────────────────────────────────────────────
+omegaconf>=2.3.0
+pyyaml>=6.0.0
+
+# ── Utilities ────────────────────────────────────────────────────
+numpy>=1.24.0
+tqdm>=4.66.0
+huggingface_hub>=0.20.0
+
+# ── Testing ──────────────────────────────────────────────────────
+pytest>=7.4.0
+pytest-cov>=4.1.0
