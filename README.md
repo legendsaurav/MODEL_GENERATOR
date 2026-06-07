@@ -141,6 +141,11 @@ MODEL_GENERATOR_V2/
 
 ## Dependencies
 
+**System Requirements (Linux only)**: You may need to install OpenGL libraries for `pymeshlab` to work correctly.
+```bash
+sudo apt-get update && sudo apt-get install -y libgl1 libglx-mesa0
+```
+
 **Core ML**: torch, transformers, diffusers, accelerate, einops, safetensors  
 **3D Processing**: trimesh, pymeshlab, scikit-image  
 **Image Processing**: Pillow, opencv-python, rembg  

@@ -155,10 +155,8 @@ class ModelLoader:
         # Initialize models with config params
         models = self._initialize_models(config)
 
-        # Load weights
-        weights_file = self._find_weights(directory)
-        if weights_file:
-            self._load_weights(models, weights_file)
+        # Load weights from specific subdirectories
+        self._load_weights(models, directory)
 
         return models
 
@@ -177,15 +175,17 @@ class ModelLoader:
                         return path
         return None
 
-    def _find_weights(self, directory: Path) -> Optional[Path]:
-        """Search for model weight files."""
-        # Prefer safetensors
-        for pattern in ["*.safetensors", "*.ckpt", "*.pt", "*.bin"]:
-            files = list(directory.rglob(pattern))
-            if files:
-                # Sort by size (largest first, likely the main model)
-                files.sort(key=lambda f: f.stat().st_size, reverse=True)
-                return files[0]
+    def _find_component_weights(self, directory: Path, component_names: list[str]) -> Optional[Path]:
+        """Search for model weight files in specific subdirectories."""
+        for comp_name in component_names:
+            comp_dir = directory / comp_name
+            if comp_dir.exists() and comp_dir.is_dir():
+                # Prefer safetensors
+                for pattern in ["*.safetensors", "*.ckpt", "*.pt", "*.bin"]:
+                    files = list(comp_dir.rglob(pattern))
+                    if files:
+                        files.sort(key=lambda f: f.stat().st_size, reverse=True)
+                        return files[0]
         return None
 
     def _initialize_models(self, config: dict) -> Dict[str, object]:
@@ -222,38 +222,60 @@ class ModelLoader:
     def _load_weights(
         self,
         models: Dict[str, object],
-        weights_path: Path,
+        directory: Path,
     ) -> None:
-        """Load weights from a checkpoint file into models.
+        """Load weights from specific subdirectories into models.
 
         Args:
             models: Dictionary of model instances.
-            weights_path: Path to weights file.
+            directory: Root directory of the model snapshot.
         """
-        logger.info(f"Loading weights from {weights_path}")
+        logger.info(f"Loading weights from {directory}")
 
-        if weights_path.suffix == ".safetensors":
-            import safetensors.torch
-            state_dict = safetensors.torch.load_file(
-                str(weights_path), device="cpu"
-            )
-            # Parse prefixed keys
-            ckpt = self._parse_prefixed_state_dict(state_dict)
-        else:
-            ckpt = torch.load(
-                str(weights_path), map_location="cpu", weights_only=True
-            )
+        # Components mapping
+        components = {
+            "model": ["hunyuan3d-dit-v2-1", "hunyuan3d-dit-v2-0", "dit"],
+            "vae": ["hunyuan3d-vae-v2-1", "hunyuan3d-vae-v2-0-withencoder", "vae"],
+            "conditioner": ["hunyuan3d-dit-v2-1", "hunyuan3d-dit-v2-0", "dit"] # Conditioner weights are often stored in DiT
+        }
 
-        # Load into each model
-        for name, model in models.items():
-            if name == "scheduler":
+        for model_key, model_instance in models.items():
+            if model_key == "scheduler" or not hasattr(model_instance, "load_state_dict"):
                 continue
-            if name in ckpt and hasattr(model, "load_state_dict"):
+
+            subdirs = components.get(model_key, [])
+            weights_path = self._find_component_weights(directory, subdirs)
+
+            if weights_path:
+                logger.info(f"Loading {model_key} weights from {weights_path.name}")
+                if weights_path.suffix == ".safetensors":
+                    import safetensors.torch
+                    state_dict = safetensors.torch.load_file(str(weights_path), device="cpu")
+                    ckpt = self._parse_prefixed_state_dict(state_dict)
+                else:
+                    ckpt = torch.load(str(weights_path), map_location="cpu", weights_only=True)
+                    if not isinstance(ckpt, dict):
+                        ckpt = {"model": ckpt}
+
+                # If the key exists in prefixed ckpt, use it, otherwise use the whole state dict
+                # Some checkpoints have flat keys, some have 'model.x' prefixes.
+                if model_key in ckpt:
+                    target_dict = ckpt[model_key]
+                else:
+                    target_dict = state_dict if weights_path.suffix == ".safetensors" else ckpt
+
                 try:
-                    model.load_state_dict(ckpt[name], strict=False)
-                    logger.info(f"Loaded weights for: {name}")
+                    if model_key == "conditioner" and hasattr(model_instance, "load_state_dict_partial"):
+                        model_instance.load_state_dict_partial(target_dict, strict=False)
+                    else:
+                        missing, unexpected = model_instance.load_state_dict(target_dict, strict=False)
+                        if missing:
+                            logger.warning(f"Partial weight load for {model_key}, missing {len(missing)} keys. Example: {missing[:3]}")
+                    logger.info(f"Loaded weights for: {model_key}")
                 except Exception as e:
-                    logger.warning(f"Partial weight load for {name}: {e}")
+                    logger.warning(f"Failed to load weights for {model_key}: {e}")
+            else:
+                logger.warning(f"No weights found for component: {model_key}")
 
         # Move to device
         target = "cpu" if self.enable_cpu_offload else self.device

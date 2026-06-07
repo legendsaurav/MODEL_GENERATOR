@@ -1,0 +1,797 @@
+# ============================================================================
+#  MODEL_GENERATOR_V2 — Complete Setup & Run Guide
+# ============================================================================
+#
+#  Ultra-quality single-image-to-3D-mesh generation based on Hunyuan3D-2.1
+#  This guide covers EVERYTHING from a fresh machine to your first 3D mesh.
+#
+# ============================================================================
+
+
+# ╔══════════════════════════════════════════════════════════════════════════╗
+# ║                                                                        ║
+# ║                    TABLE OF CONTENTS                                   ║
+# ║                                                                        ║
+# ║   1. System Requirements                                              ║
+# ║   2. Environment Setup (Python, CUDA, Git)                            ║
+# ║   3. Clone & Install MODEL_GENERATOR_V2                               ║
+# ║   4. Install All Dependencies                                         ║
+# ║   5. Download Pretrained Model Weights                                ║
+# ║   6. Run Your First Mesh Generation                                   ║
+# ║   7. CLI Reference (All Commands & Options)                           ║
+# ║   8. Python API Usage                                                 ║
+# ║   9. Quality Presets Explained                                        ║
+# ║  10. Post-Processing Options                                          ║
+# ║  11. Export Formats                                                    ║
+# ║  12. Running Tests                                                    ║
+# ║  13. Troubleshooting                                                  ║
+# ║  14. Performance Tips                                                 ║
+# ║                                                                        ║
+# ╚══════════════════════════════════════════════════════════════════════════╝
+
+
+# ============================================================================
+# 1. SYSTEM REQUIREMENTS
+# ============================================================================
+#
+# ┌──────────────────┬──────────────────────────────────────────────────────┐
+# │ Component        │ Requirement                                         │
+# ├──────────────────┼──────────────────────────────────────────────────────┤
+# │ OS               │ Windows 10/11, Ubuntu 20.04+, macOS 13+ (CPU only) │
+# │ Python           │ 3.10, 3.11, or 3.12                                │
+# │ GPU (Recommended)│ NVIDIA GPU with CUDA support                       │
+# │ VRAM (FAST)      │ Minimum 6 GB                                       │
+# │ VRAM (BALANCED)  │ Minimum 10 GB                                      │
+# │ VRAM (ULTRA)     │ Minimum 16 GB                                      │
+# │ RAM              │ Minimum 16 GB (32 GB recommended)                  │
+# │ Disk Space       │ ~15 GB (model weights + dependencies)              │
+# │ CUDA Toolkit     │ 11.8 or 12.1+ (must match your PyTorch build)     │
+# │ Git              │ Any recent version                                  │
+# │ Internet         │ Required for first-time model weight download       │
+# └──────────────────┴──────────────────────────────────────────────────────┘
+#
+# Supported NVIDIA GPUs (tested):
+#   - RTX 3060 (12GB) .............. FAST preset only
+#   - RTX 3080 (10GB) .............. FAST + BALANCED
+#   - RTX 3090 / 4080 (16GB+) ..... All presets
+#   - RTX 4090 (24GB) .............. All presets (fastest)
+#   - A100 (40GB/80GB) ............. All presets (production)
+#   - Tesla V100 (16GB/32GB) ....... All presets
+#
+# CPU-only mode: Works but VERY slow (~30-60 min per mesh). Not recommended.
+
+
+# ============================================================================
+# 2. ENVIRONMENT SETUP
+# ============================================================================
+
+# ─── Step 2.1: Install Git ──────────────────────────────────────────────────
+#
+# Windows:
+#   Download from: https://git-scm.com/download/win
+#   Or use winget:
+winget install --id Git.Git -e --source winget
+
+# Linux (Ubuntu/Debian):
+sudo apt update && sudo apt install git -y
+
+# macOS:
+brew install git
+
+# Verify:
+git --version
+#   Expected output: git version 2.x.x
+
+
+# ─── Step 2.2: Install Python 3.10+ ─────────────────────────────────────────
+#
+# Windows:
+#   Download from: https://www.python.org/downloads/
+#   ⚠️ CHECK "Add Python to PATH" during installation!
+#   Or use winget:
+winget install -e --id Python.Python.3.11
+
+# Linux (Ubuntu/Debian):
+sudo apt install python3.11 python3.11-venv python3-pip -y
+
+# macOS:
+brew install python@3.11
+
+# Verify:
+python --version
+#   Expected: Python 3.10.x, 3.11.x, or 3.12.x
+
+
+# ─── Step 2.3: Install CUDA Toolkit (GPU users only) ────────────────────────
+#
+# Check if you already have CUDA:
+nvidia-smi
+#   Look for "CUDA Version" in the top-right corner.
+#   If you see CUDA 11.8+ or 12.x, you're good.
+#
+# If CUDA is NOT installed:
+#   Download from: https://developer.nvidia.com/cuda-downloads
+#   Choose your OS → Architecture → Version → Installer Type
+#   Follow the installation wizard.
+#
+# Verify CUDA installation:
+nvcc --version
+#   Expected: Cuda compilation tools, release 11.8 or 12.x
+
+
+# ─── Step 2.4: Install Visual C++ Build Tools (Windows only) ────────────────
+#
+# Some dependencies (pymeshlab, onnxruntime) need C++ build tools:
+#
+# Option A — Visual Studio Build Tools (lightweight):
+#   Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+#   Install "Desktop development with C++" workload
+#
+# Option B — If you already have Visual Studio:
+#   Make sure the C++ workload is installed.
+
+
+# ============================================================================
+# 3. CLONE & INSTALL MODEL_GENERATOR_V2
+# ============================================================================
+
+# ─── Step 3.1: Clone the repository ─────────────────────────────────────────
+
+# Navigate to where you want to install:
+cd C:\Projects
+# (or any directory of your choice)
+
+# Clone:
+git clone <your-repo-url> MODEL_GENERATOR_V2
+cd MODEL_GENERATOR_V2
+
+# If the project is local (not on Git yet), just navigate to it:
+cd C:\Users\proka\.gemini\antigravity\scratch\MODEL_GENERATOR_V2
+
+
+# ─── Step 3.2: Create a virtual environment ─────────────────────────────────
+#
+# STRONGLY RECOMMENDED to avoid dependency conflicts.
+
+# Windows (PowerShell):
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Windows (CMD):
+python -m venv venv
+venv\Scripts\activate.bat
+
+# Linux / macOS:
+python3 -m venv venv
+source venv/bin/activate
+
+# Verify the venv is active:
+#   Your prompt should now show (venv) at the beginning.
+
+# Upgrade pip inside the venv:
+python -m pip install --upgrade pip setuptools wheel
+
+
+# ============================================================================
+# 4. INSTALL ALL DEPENDENCIES
+# ============================================================================
+
+# ─── Step 4.1: Install PyTorch with CUDA ─────────────────────────────────────
+#
+# ⚠️ IMPORTANT: Install PyTorch FIRST and SEPARATELY.
+#    The correct command depends on your CUDA version.
+#
+# Check your CUDA version:
+nvidia-smi
+#   Look at "CUDA Version:" in the output header.
+
+# ── For CUDA 11.8: ──
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# ── For CUDA 12.1: ──
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# ── For CUDA 12.4+: ──
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# ── For CPU only (no GPU): ──
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# ── For macOS (Apple Silicon M1/M2/M3): ──
+pip install torch torchvision
+
+# Verify PyTorch + CUDA:
+python -c "import torch; print(f'PyTorch {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')"
+#
+#   Expected output (GPU):
+#     PyTorch 2.x.x
+#     CUDA available: True
+#     GPU: NVIDIA GeForce RTX 4090
+#
+#   Expected output (CPU):
+#     PyTorch 2.x.x
+#     CUDA available: False
+#     GPU: N/A
+
+
+# ─── Step 4.2: Install project dependencies ─────────────────────────────────
+
+pip install -r requirements.txt
+
+# This installs:
+#   - transformers      (DINOv2 image encoder)
+#   - diffusers         (flow-matching scheduler)
+#   - accelerate        (model parallelism utilities)
+#   - einops            (tensor reshaping)
+#   - safetensors       (efficient weight loading)
+#   - trimesh           (3D mesh processing)
+#   - pymeshlab         (advanced mesh filters)
+#   - pygltflib         (GLB/GLTF support)
+#   - scikit-image      (marching cubes)
+#   - Pillow            (image loading)
+#   - opencv-python     (image processing)
+#   - rembg             (background removal)
+#   - onnxruntime       (rembg inference backend)
+#   - omegaconf         (YAML config)
+#   - pyyaml            (YAML parsing)
+#   - numpy             (numerical arrays)
+#   - tqdm              (progress bars)
+#   - huggingface_hub   (model downloads)
+#   - pytest            (testing)
+
+
+# ─── Step 4.3: Install MODEL_GENERATOR_V2 as a package ──────────────────────
+
+pip install -e .
+
+# The -e flag installs in "editable" mode — changes to source code
+# take effect immediately without reinstalling.
+
+# Verify installation:
+python -c "import MODEL_GENERATOR_V2; print(f'MODEL_GENERATOR_V2 v{MODEL_GENERATOR_V2.__version__} installed successfully')"
+#   Expected: MODEL_GENERATOR_V2 v2.0.0 installed successfully
+
+
+# ─── Step 4.4: (Optional) Install GPU-accelerated rembg ─────────────────────
+#
+# For faster background removal, install GPU-accelerated ONNX runtime:
+
+# CUDA 11.x:
+pip install onnxruntime-gpu
+
+# CUDA 12.x:
+pip install onnxruntime-gpu --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
+
+
+# ============================================================================
+# 5. DOWNLOAD PRETRAINED MODEL WEIGHTS
+# ============================================================================
+#
+# The model weights are hosted on HuggingFace. There are two approaches:
+#
+# ─── Option A: Automatic download (recommended) ─────────────────────────────
+#
+# The pipeline will auto-download weights on first run.
+# Just run generate.py and it will download ~10GB of weights to
+# your HuggingFace cache (~/.cache/huggingface/).
+#
+# No action needed — skip to Section 6!
+
+# ─── Option B: Manual pre-download ──────────────────────────────────────────
+#
+# If you want to pre-download before running, or need offline access:
+
+# Install the HuggingFace CLI:
+pip install huggingface_hub[cli]
+
+# Login (optional, needed only for gated models):
+huggingface-cli login
+#   Enter your HuggingFace access token from https://huggingface.co/settings/tokens
+
+# Download Hunyuan3D-2 weights (v2.0 — ~10GB):
+huggingface-cli download tencent/Hunyuan3D-2 --local-dir ./pretrained/Hunyuan3D-2
+
+# OR download Hunyuan3D-2.1 weights (v2.1):
+huggingface-cli download tencent/Hunyuan3D-2.1 --local-dir ./pretrained/Hunyuan3D-2.1
+
+# Key weight files that will be downloaded:
+#   pretrained/Hunyuan3D-2/
+#   ├── hunyuan3d-dit-v2-0/           # DiT (diffusion transformer) weights
+#   │   ├── model.safetensors         # ~4GB
+#   │   └── config.yaml
+#   ├── hunyuan3d-vae-v2-0-withencoder/  # ShapeVAE weights
+#   │   ├── model.safetensors         # ~2GB
+#   │   └── config.yaml
+#   └── ...
+
+# ─── Option C: Download specific subfolders only ─────────────────────────────
+#
+# To save disk space, download only the shape generation weights
+# (skip texture/paint weights):
+
+python -c "
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id='tencent/Hunyuan3D-2',
+    local_dir='./pretrained/Hunyuan3D-2',
+    allow_patterns=[
+        'hunyuan3d-dit-v2-0/*',
+        'hunyuan3d-vae-v2-0-withencoder/*',
+    ],
+    ignore_patterns=[
+        'hunyuan3d-paint-*',
+        'hunyuan3d-delight-*',
+    ],
+)
+print('Shape generation weights downloaded successfully!')
+"
+
+
+# ============================================================================
+# 6. RUN YOUR FIRST MESH GENERATION
+# ============================================================================
+
+# ─── Step 6.1: Prepare an input image ───────────────────────────────────────
+#
+# Requirements for input images:
+#   - Format: PNG, JPG, JPEG, BMP, WEBP
+#   - Content: A single object on any background
+#   - Size: Any (will be auto-resized to 518x518)
+#   - Best results: Clean background, well-lit object, single subject
+#
+# Place your image in the project directory or provide the full path.
+# Example: input.png, my_object.jpg, C:\Photos\chair.png
+
+# ─── Step 6.2: Generate a mesh (basic) ──────────────────────────────────────
+
+# Simplest command — uses BALANCED preset, outputs GLB:
+python generate.py --image input.png --output output.glb
+
+# ─── Step 6.3: Generate with a quality preset ───────────────────────────────
+
+# FAST (quick preview, ~15s on RTX 4090):
+python generate.py --image input.png --preset fast --output fast_output.glb
+
+# BALANCED (good quality, ~45s on RTX 4090):
+python generate.py --image input.png --preset balanced --output balanced_output.glb
+
+# ULTRA (maximum quality, ~120s on RTX 4090):
+python generate.py --image input.png --preset ultra --output ultra_output.glb
+
+# ─── Step 6.4: Export to multiple formats ────────────────────────────────────
+
+python generate.py --image input.png --preset ultra --format glb obj stl ply --output-dir ./outputs
+
+# This creates:
+#   outputs/input.glb   (binary GL Transmission Format)
+#   outputs/input.obj   (Wavefront OBJ — most universal)
+#   outputs/input.stl   (for 3D printing)
+#   outputs/input.ply   (Stanford PLY — for research)
+
+# ─── Step 6.5: Use a local model path (if pre-downloaded) ───────────────────
+
+python generate.py --image input.png --model-path ./pretrained/Hunyuan3D-2 --output output.glb
+
+# ─── Step 6.6: Run on CPU (no GPU) ──────────────────────────────────────────
+
+python generate.py --image input.png --preset fast --device cpu --fp32 --output output.glb
+# ⚠️ CPU mode is very slow (30-60 minutes). Use FAST preset only.
+
+# ─── Step 6.7: Set a seed for reproducibility ───────────────────────────────
+
+python generate.py --image input.png --preset balanced --seed 42 --output output.glb
+# Same seed + same image = same mesh every time.
+
+
+# ============================================================================
+# 7. CLI REFERENCE — ALL COMMANDS & OPTIONS
+# ============================================================================
+#
+# Full syntax:
+#
+#   python generate.py [OPTIONS]
+#
+# ┌───────────────────────┬──────────┬────────────────────────────────────────┐
+# │ Option                │ Default  │ Description                            │
+# ├───────────────────────┼──────────┼────────────────────────────────────────┤
+# │ --image, -i           │ REQUIRED │ Path to input image                    │
+# │ --output, -o          │ None     │ Output file path                       │
+# │ --output-dir          │ None     │ Output directory (auto-names files)    │
+# │ --preset, -p          │ balanced │ Quality: fast, balanced, ultra         │
+# │ --steps, -s           │ (preset) │ Diffusion steps (1-500)                │
+# │ --resolution, -r      │ (preset) │ Octree grid resolution (64-1024)      │
+# │ --guidance-scale      │ 7.5      │ Classifier-free guidance strength      │
+# │ --seed                │ random   │ Random seed for reproducibility        │
+# │ --model-path          │ tencent/ │ HuggingFace ID or local path           │
+# │ --device              │ auto     │ Device: auto, cuda, cuda:0, cpu        │
+# │ --fp16                │ True     │ Use half-precision (faster, less VRAM) │
+# │ --fp32                │ False    │ Use full-precision (slower, more VRAM) │
+# │ --format, -f          │ (preset) │ Export formats: glb, obj, stl, ply     │
+# │ --target-faces        │ (preset) │ Target face count after decimation     │
+# │ --smoothing-iterations│ (preset) │ Smoothing pass count                   │
+# │ --no-smooth           │ False    │ Disable smoothing                      │
+# │ --no-repair           │ False    │ Disable mesh repair                    │
+# │ --no-decimate         │ False    │ Disable decimation                     │
+# │ --no-bg-removal       │ False    │ Skip background removal                │
+# │ --no-postprocess      │ False    │ Skip ALL post-processing               │
+# │ --cpu-offload         │ False    │ Offload models to CPU (saves VRAM)     │
+# │ --quiet, -q           │ False    │ Suppress progress output               │
+# └───────────────────────┴──────────┴────────────────────────────────────────┘
+#
+# ── Example: Custom high-quality run ──
+#
+python generate.py \
+    --image photo.png \
+    --steps 75 \
+    --resolution 448 \
+    --seed 123 \
+    --target-faces 150000 \
+    --smoothing-iterations 8 \
+    --format glb obj \
+    --output-dir ./my_meshes \
+    --device cuda:0 \
+    --fp16
+#
+# ── Example: Raw mesh (no post-processing) ──
+#
+python generate.py --image input.png --no-postprocess --output raw_mesh.glb
+#
+# ── Example: Low-VRAM mode ──
+#
+python generate.py --image input.png --preset fast --cpu-offload --output output.glb
+
+
+# ============================================================================
+# 8. PYTHON API USAGE
+# ============================================================================
+
+# ─── 8.1: Full pipeline (recommended) ───────────────────────────────────────
+
+"""
+from MODEL_GENERATOR_V2.generation import GeometryPipeline
+from MODEL_GENERATOR_V2.postprocessing import PostProcessingPipeline
+from MODEL_GENERATOR_V2.exporters import get_exporter
+from MODEL_GENERATOR_V2.configs.presets import get_preset_config
+
+# Step 1: Load config
+config = get_preset_config('ultra')
+
+# Step 2: Initialize pipeline (downloads weights on first call)
+pipeline = GeometryPipeline.from_pretrained(
+    model_path='tencent/Hunyuan3D-2',
+    preset='ultra',
+)
+
+# Step 3: Generate raw mesh from image
+raw_mesh = pipeline('my_photo.png')
+print(f"Raw mesh: {len(raw_mesh.vertices)} verts, {len(raw_mesh.faces)} faces")
+
+# Step 4: Post-process
+postprocessor = PostProcessingPipeline(config.postprocessing)
+clean_mesh = postprocessor(raw_mesh)
+print(f"Clean mesh: {len(clean_mesh.vertices)} verts, {len(clean_mesh.faces)} faces")
+
+# Step 5: Export
+for fmt in ['glb', 'obj', 'stl', 'ply']:
+    exporter = get_exporter(fmt)
+    exporter.export(clean_mesh, f'output.{fmt}')
+    print(f"Exported: output.{fmt}")
+"""
+
+# ─── 8.2: Custom config ─────────────────────────────────────────────────────
+
+"""
+from MODEL_GENERATOR_V2.configs.base_config import (
+    GenerationConfig, PostProcessingConfig, PipelineConfig
+)
+
+config = PipelineConfig(
+    generation=GenerationConfig(
+        num_inference_steps=75,
+        octree_resolution=448,
+        seed=42,
+        dtype='float16',
+    ),
+    postprocessing=PostProcessingConfig(
+        enable_smoothing=True,
+        smoothing_method='taubin',
+        smoothing_iterations=8,
+        target_faces=120000,
+    ),
+)
+config.validate()
+"""
+
+# ─── 8.3: Post-processing only (on existing mesh) ───────────────────────────
+
+"""
+import trimesh
+from MODEL_GENERATOR_V2.postprocessing import PostProcessingPipeline
+from MODEL_GENERATOR_V2.configs.base_config import PostProcessingConfig
+
+# Load an existing mesh
+mesh = trimesh.load('raw_scan.obj')
+
+# Post-process
+config = PostProcessingConfig(
+    enable_repair=True,
+    enable_smoothing=True,
+    smoothing_iterations=10,
+    target_faces=100000,
+)
+pipeline = PostProcessingPipeline(config)
+clean = pipeline(mesh)
+clean.export('cleaned.glb')
+"""
+
+# ─── 8.4: Mesh validation only ──────────────────────────────────────────────
+
+"""
+import trimesh
+from MODEL_GENERATOR_V2.postprocessing.validation import MeshValidator
+
+mesh = trimesh.load('my_mesh.glb')
+validator = MeshValidator()
+print(validator.generate_report(mesh))
+"""
+
+
+# ============================================================================
+# 9. QUALITY PRESETS EXPLAINED
+# ============================================================================
+#
+# ┌──────────┬───────┬──────────┬─────────┬──────────┬───────┬──────────────┐
+# │ Preset   │ Steps │ Octree   │ Target  │ Smooth   │ VRAM  │ Time (4090)  │
+# │          │       │ Res      │ Faces   │ Iters    │       │              │
+# ├──────────┼───────┼──────────┼─────────┼──────────┼───────┼──────────────┤
+# │ FAST     │  25   │  256     │  50K    │  3       │ ~6GB  │ ~15 seconds  │
+# │ BALANCED │  50   │  384     │ 100K    │  5       │ ~10GB │ ~45 seconds  │
+# │ ULTRA    │ 100   │  512     │ 200K    │ 10       │ ~16GB │ ~120 seconds │
+# └──────────┴───────┴──────────┴─────────┴──────────┴───────┴──────────────┘
+#
+# ── When to use each preset: ──
+#
+# FAST     → Quick previews, testing, low-VRAM GPUs
+# BALANCED → Production use, good quality/speed tradeoff
+# ULTRA    → Final assets, maximum geometric detail, presentation quality
+#
+# ── You can mix preset + overrides: ──
+#
+# Start from BALANCED but with more steps:
+python generate.py --image input.png --preset balanced --steps 80 --output output.glb
+#
+# Start from ULTRA but fewer faces:
+python generate.py --image input.png --preset ultra --target-faces 80000 --output output.glb
+
+
+# ============================================================================
+# 10. POST-PROCESSING OPTIONS
+# ============================================================================
+#
+# The 8-step post-processing pipeline:
+#
+#   1. REPAIR        Remove degenerate faces, duplicate faces, merge close
+#                    vertices, fix non-manifold edges
+#
+#   2. FLOATER       Remove small disconnected components (noise blobs)
+#     REMOVAL        that appear as floating geometry
+#
+#   3. NORMAL        Reorient all faces for consistent outward-facing
+#     FIXING         normals, recompute vertex normals
+#
+#   4. HOLE          Fill small holes in the surface (max edges threshold
+#     FILLING        controls which holes get filled)
+#
+#   5. SMOOTHING     Taubin: λ|μ filter (volume-preserving, general use)
+#                    HC: Humphrey's Classes (better at preserving edges)
+#
+#   6. SUBDIVISION   Loop subdivision for smoother surfaces (BALANCED/ULTRA)
+#                    Approximately 4× faces per iteration
+#
+#   7. DECIMATION    Quadric Edge Collapse to reduce face count to target
+#                    Preserves boundaries, normals, and topology
+#
+#   8. VALIDATION    Check watertightness, manifoldness, degenerate faces
+#                    Output a quality report
+#
+# ── Disable individual steps: ──
+python generate.py --image in.png --no-smooth --output out.glb
+python generate.py --image in.png --no-repair --output out.glb
+python generate.py --image in.png --no-decimate --output out.glb
+python generate.py --image in.png --no-postprocess --output out.glb
+
+
+# ============================================================================
+# 11. EXPORT FORMATS
+# ============================================================================
+#
+# ┌────────┬───────────────────────────────────────────────────────────────────┐
+# │ Format │ Description                                                      │
+# ├────────┼───────────────────────────────────────────────────────────────────┤
+# │ GLB    │ Binary GL Transmission Format. Single file, compact.             │
+# │        │ Best for: web viewers, game engines, Three.js, Babylon.js        │
+# │        │ Includes: vertex positions, normals, face indices                │
+# ├────────┼───────────────────────────────────────────────────────────────────┤
+# │ OBJ    │ Wavefront OBJ. ASCII text format, most widely supported.         │
+# │        │ Best for: Blender, Maya, 3ds Max, ZBrush, any DCC tool          │
+# │        │ Includes: vertices (v), normals (vn), faces (f)                 │
+# ├────────┼───────────────────────────────────────────────────────────────────┤
+# │ STL    │ Stereolithography. Binary format. Industry standard.             │
+# │        │ Best for: 3D printing (Cura, PrusaSlicer), CAD/CAM              │
+# │        │ Includes: triangles with face normals                           │
+# ├────────┼───────────────────────────────────────────────────────────────────┤
+# │ PLY    │ Stanford Polygon File. Binary or ASCII.                          │
+# │        │ Best for: research, point cloud tools, MeshLab                  │
+# │        │ Includes: vertices, normals, faces, custom properties           │
+# └────────┴───────────────────────────────────────────────────────────────────┘
+#
+# Export all formats at once:
+python generate.py --image input.png --format glb obj stl ply --output-dir ./outputs
+
+
+# ============================================================================
+# 12. RUNNING TESTS
+# ============================================================================
+
+# ─── Unit tests (no GPU required) ───────────────────────────────────────────
+# Tests configs, preprocessing, mesh repair, smoothing, exporters, validation.
+
+pytest tests/unit/ -v
+#   Expected: ~35 tests, all PASSED
+
+# ─── Individual test files ──────────────────────────────────────────────────
+pytest tests/unit/test_config.py -v
+pytest tests/unit/test_preprocessing.py -v
+pytest tests/unit/test_mesh_repair.py -v
+pytest tests/unit/test_smoothing.py -v
+pytest tests/unit/test_exporters.py -v
+pytest tests/unit/test_validation.py -v
+
+# ─── Integration tests (no GPU required) ────────────────────────────────────
+# Tests the full post-processing pipeline on synthetic meshes.
+
+pytest tests/integration/ -v
+#   Expected: ~10 tests, all PASSED
+
+# ─── All tests with coverage report ─────────────────────────────────────────
+pytest tests/ -v --cov=MODEL_GENERATOR_V2 --cov-report=term-missing
+
+# ─── Inference tests (requires GPU + downloaded weights) ────────────────────
+# Tests actual model loading and mesh generation.
+# Automatically skipped if no CUDA GPU is available.
+
+pytest tests/inference/ -v
+#   Skipped without GPU, runs with GPU
+
+
+# ============================================================================
+# 13. TROUBLESHOOTING
+# ============================================================================
+
+# ─── Problem: "CUDA out of memory" ──────────────────────────────────────────
+# Solution 1: Use a lower preset
+python generate.py --image input.png --preset fast --output output.glb
+
+# Solution 2: Enable CPU offloading
+python generate.py --image input.png --preset balanced --cpu-offload --output output.glb
+
+# Solution 3: Lower the resolution
+python generate.py --image input.png --resolution 256 --output output.glb
+
+# Solution 4: Use FP32 on CPU (very slow)
+python generate.py --image input.png --device cpu --fp32 --output output.glb
+
+
+# ─── Problem: "ModuleNotFoundError: No module named 'MODEL_GENERATOR_V2'" ──
+# Solution: Install in editable mode:
+pip install -e .
+
+
+# ─── Problem: "No module named 'pymeshlab'" ─────────────────────────────────
+# Solution:
+pip install pymeshlab
+# If that fails on Windows, try:
+pip install pymeshlab --no-build-isolation
+
+
+# ─── Problem: "rembg background removal fails" ──────────────────────────────
+# Solution: Install rembg with GPU support:
+pip install rembg[gpu]
+# Or skip background removal if your image already has a clean background:
+python generate.py --image input.png --no-bg-removal --output output.glb
+
+
+# ─── Problem: "Marching Cubes produced empty mesh" ──────────────────────────
+# This means the SDF field has no zero-crossing (no surface detected).
+# Possible causes:
+#   - Bad input image (too dark, blurry, no clear object)
+#   - Model weights not loaded correctly
+# Solutions:
+#   - Try a clearer input image with a single object
+#   - Try a different seed: --seed 123
+#   - Increase steps: --steps 100
+
+
+# ─── Problem: "safetensors not found" or weight loading errors ───────────────
+# Solution: Ensure HuggingFace hub downloaded completely:
+pip install safetensors huggingface_hub --upgrade
+# Re-download weights:
+huggingface-cli download tencent/Hunyuan3D-2 --force-download
+
+
+# ─── Problem: PyTorch says CUDA is not available ─────────────────────────────
+# Verify your CUDA + PyTorch combination:
+python -c "import torch; print(torch.version.cuda); print(torch.cuda.is_available())"
+# If False: reinstall PyTorch with the correct CUDA version.
+# See Step 4.1 above.
+
+
+# ─── Problem: "Permission denied" on Windows ────────────────────────────────
+# Run PowerShell as Administrator, or:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+
+# ============================================================================
+# 14. PERFORMANCE TIPS
+# ============================================================================
+#
+# 1. USE FP16 (default). FP32 uses 2× VRAM and is slower.
+#
+# 2. CLOSE OTHER GPU APPS before generation (browsers with hardware
+#    acceleration, other ML models, games).
+#
+# 3. USE FAST PRESET for testing/iterating, switch to ULTRA for
+#    final assets only.
+#
+# 4. SEED YOUR RUNS for reproducibility: --seed 42
+#
+# 5. SKIP BACKGROUND REMOVAL if your image is already clean:
+#    --no-bg-removal (saves ~2-5 seconds)
+#
+# 6. CPU OFFLOADING for low-VRAM GPUs: --cpu-offload
+#    Moves models to CPU between stages. Slower but uses less VRAM.
+#
+# 7. BATCH PROCESSING: Write a simple loop script:
+#
+#    import glob
+#    from MODEL_GENERATOR_V2.generation import GeometryPipeline
+#    from MODEL_GENERATOR_V2.postprocessing import PostProcessingPipeline
+#    from MODEL_GENERATOR_V2.exporters import get_exporter
+#    from MODEL_GENERATOR_V2.configs.presets import get_preset_config
+#
+#    config = get_preset_config('balanced')
+#    pipeline = GeometryPipeline.from_pretrained(preset='balanced')
+#    postproc = PostProcessingPipeline(config.postprocessing)
+#    exporter = get_exporter('glb')
+#
+#    for img_path in glob.glob('input_images/*.png'):
+#        mesh = pipeline(img_path)
+#        mesh = postproc(mesh)
+#        name = img_path.split('/')[-1].replace('.png', '.glb')
+#        exporter.export(mesh, f'outputs/{name}')
+#        print(f"Done: {name}")
+#
+# 8. MONITOR VRAM with nvidia-smi during generation:
+#    nvidia-smi -l 1     (refreshes every second)
+
+
+# ============================================================================
+# QUICK REFERENCE — COPY-PASTE SETUP (Fresh Machine → First Mesh)
+# ============================================================================
+#
+# Run these commands in order on a fresh machine with an NVIDIA GPU:
+#
+#   git clone <repo-url> MODEL_GENERATOR_V2
+#   cd MODEL_GENERATOR_V2
+#   python -m venv venv
+#   .\venv\Scripts\Activate.ps1                           # Windows
+#   # source venv/bin/activate                            # Linux/Mac
+#   python -m pip install --upgrade pip setuptools wheel
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r requirements.txt
+#   pip install -e .
+#   python generate.py --image input.png --preset balanced --output output.glb
+#
+# That's it! The model weights download automatically on first run.
+#
+# ============================================================================
