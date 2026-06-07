@@ -1,20 +1,18 @@
 """
 Adaptive mesh subdivision for MODEL_GENERATOR_V2.
 
-Increases mesh resolution by subdividing faces using Loop or
-midpoint subdivision schemes. Adaptive mode only subdivides
-faces with edges longer than a threshold.
+Uses trimesh as the PRIMARY backend. Pymeshlab is used if available.
 
 Dependencies:
     - trimesh
-    - pymeshlab
+    - numpy
+    - pymeshlab (optional)
 
 Classes:
     AdaptiveSubdivider: Applies subdivision to increase mesh detail.
 """
 
 import logging
-import tempfile
 from typing import Optional
 
 import numpy as np
@@ -22,33 +20,22 @@ import trimesh
 
 logger = logging.getLogger("model_generator_v2.postprocessing.subdivision")
 
-
-def _trimesh_to_meshset(mesh: trimesh.Trimesh):
-    """Convert trimesh → pymeshlab MeshSet."""
+# ── Pymeshlab availability check ───────────────────────────────────────────
+_PYMESHLAB_AVAILABLE = False
+try:
     import pymeshlab
-    ms = pymeshlab.MeshSet()
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        mesh.export(f.name)
-        ms.load_new_mesh(f.name)
-    return ms
-
-
-def _meshset_to_trimesh(ms) -> trimesh.Trimesh:
-    """Convert pymeshlab MeshSet → trimesh."""
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        ms.save_current_mesh(f.name)
-        return trimesh.load(f.name, process=False)
+    _test_ms = pymeshlab.MeshSet()
+    _PYMESHLAB_AVAILABLE = True
+    del _test_ms
+except Exception:
+    logger.info("pymeshlab not fully functional — using trimesh-only subdivision")
 
 
 class AdaptiveSubdivider:
     """Mesh subdivision to increase geometric detail.
 
-    Supports three subdivision schemes:
-    - **Loop**: Smooth subdivision that converges to C2 surfaces.
-      Produces high-quality results but approximately 4× faces per step.
-    - **Midpoint**: Simple midpoint splitting. Faster but less smooth.
-    - **Adaptive**: Only subdivides edges exceeding a length threshold,
-      adding detail only where needed.
+    Supports Loop and midpoint subdivision. Uses pymeshlab when
+    available, falls back to trimesh.subdivide.
 
     Args:
         max_face_limit: Safety limit to prevent over-subdivision.
@@ -61,25 +48,20 @@ class AdaptiveSubdivider:
     def __init__(self, max_face_limit: int = 1_000_000) -> None:
         self.max_face_limit = max_face_limit
 
-    def midpoint_subdivision(
-        self,
-        mesh: trimesh.Trimesh,
-        iterations: int = 1,
-    ) -> trimesh.Trimesh:
-        """Apply midpoint subdivision.
-
-        Splits each edge at its midpoint, creating 4 faces per
-        original face per iteration.
-
-        Args:
-            mesh: Input mesh.
-            iterations: Number of subdivision passes.
-
-        Returns:
-            Subdivided mesh.
-        """
+    def _pymeshlab_subdivide(
+        self, mesh: trimesh.Trimesh, filter_name: str, iterations: int
+    ) -> Optional[trimesh.Trimesh]:
+        """Try pymeshlab subdivision via numpy arrays."""
+        if not _PYMESHLAB_AVAILABLE:
+            return None
         try:
-            ms = _trimesh_to_meshset(mesh)
+            ms = pymeshlab.MeshSet()
+            pm = pymeshlab.Mesh(
+                vertex_matrix=mesh.vertices.astype(np.float64),
+                face_matrix=mesh.faces.astype(np.int32),
+            )
+            ms.add_mesh(pm)
+
             for i in range(iterations):
                 current_faces = ms.current_mesh().face_number()
                 if current_faces * 4 > self.max_face_limit:
@@ -89,12 +71,58 @@ class AdaptiveSubdivider:
                         f"Stopping at iteration {i}."
                     )
                     break
-                ms.apply_filter("meshing_surface_subdivision_midpoint")
-            result = _meshset_to_trimesh(ms)
+                ms.apply_filter(filter_name)
+
+            result_mesh = ms.current_mesh()
+            verts = result_mesh.vertex_matrix()
+            faces = result_mesh.face_matrix()
+
+            if len(verts) > 0 and len(faces) > 0:
+                return trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+            return None
+        except Exception as e:
+            logger.debug(f"pymeshlab subdivision failed: {e}")
+            return None
+
+    def midpoint_subdivision(
+        self,
+        mesh: trimesh.Trimesh,
+        iterations: int = 1,
+    ) -> trimesh.Trimesh:
+        """Apply midpoint subdivision.
+
+        Args:
+            mesh: Input mesh.
+            iterations: Number of subdivision passes.
+
+        Returns:
+            Subdivided mesh.
+        """
+        # Try pymeshlab
+        result = self._pymeshlab_subdivide(
+            mesh, "meshing_surface_subdivision_midpoint", iterations
+        )
+        if result is not None:
             logger.info(
-                f"Midpoint subdivision: {len(mesh.faces)} → {len(result.faces)} faces"
+                f"Midpoint subdivision: {len(mesh.faces)} → {len(result.faces)} faces (pymeshlab)"
             )
             return result
+
+        # Trimesh fallback
+        try:
+            current = mesh
+            for i in range(iterations):
+                if len(current.faces) * 4 > self.max_face_limit:
+                    logger.warning(f"Subdivision face limit reached at iteration {i}")
+                    break
+                verts, faces = trimesh.remesh.subdivide(
+                    current.vertices, current.faces
+                )
+                current = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+            logger.info(
+                f"Midpoint subdivision: {len(mesh.faces)} → {len(current.faces)} faces (trimesh)"
+            )
+            return current
         except Exception as e:
             logger.warning(f"Midpoint subdivision failed: {e}")
             return mesh
@@ -106,9 +134,6 @@ class AdaptiveSubdivider:
     ) -> trimesh.Trimesh:
         """Apply Loop subdivision for smooth surface refinement.
 
-        Loop subdivision produces smoother results than midpoint
-        by computing weighted averages of neighboring vertices.
-
         Args:
             mesh: Input mesh (must be triangle mesh).
             iterations: Number of subdivision passes.
@@ -116,22 +141,31 @@ class AdaptiveSubdivider:
         Returns:
             Smoothly subdivided mesh.
         """
-        try:
-            ms = _trimesh_to_meshset(mesh)
-            for i in range(iterations):
-                current_faces = ms.current_mesh().face_number()
-                if current_faces * 4 > self.max_face_limit:
-                    logger.warning(
-                        f"Loop subdivision would exceed limit. "
-                        f"Stopping at iteration {i}."
-                    )
-                    break
-                ms.apply_filter("meshing_surface_subdivision_loop")
-            result = _meshset_to_trimesh(ms)
+        # Try pymeshlab
+        result = self._pymeshlab_subdivide(
+            mesh, "meshing_surface_subdivision_loop", iterations
+        )
+        if result is not None:
             logger.info(
-                f"Loop subdivision: {len(mesh.faces)} → {len(result.faces)} faces"
+                f"Loop subdivision: {len(mesh.faces)} → {len(result.faces)} faces (pymeshlab)"
             )
             return result
+
+        # Trimesh fallback: use basic subdivision
+        try:
+            current = mesh
+            for i in range(iterations):
+                if len(current.faces) * 4 > self.max_face_limit:
+                    logger.warning(f"Loop subdivision face limit reached at iteration {i}")
+                    break
+                verts, faces = trimesh.remesh.subdivide(
+                    current.vertices, current.faces
+                )
+                current = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+            logger.info(
+                f"Loop subdivision: {len(mesh.faces)} → {len(current.faces)} faces (trimesh fallback)"
+            )
+            return current
         except Exception as e:
             logger.warning(f"Loop subdivision failed: {e}")
             return mesh
@@ -144,13 +178,9 @@ class AdaptiveSubdivider:
     ) -> trimesh.Trimesh:
         """Selectively subdivide faces with long edges.
 
-        Only subdivides triangles containing edges longer than
-        the threshold, concentrating detail where it's needed.
-
         Args:
             mesh: Input mesh.
             edge_threshold: Maximum edge length before subdivision.
-                If None, uses the mean edge length.
             max_iterations: Maximum number of adaptive passes.
 
         Returns:
@@ -159,36 +189,22 @@ class AdaptiveSubdivider:
         if edge_threshold is None:
             edges = mesh.edges_unique_length
             edge_threshold = float(np.mean(edges))
-            logger.info(f"Auto edge threshold: {edge_threshold:.6f}")
 
         try:
-            ms = _trimesh_to_meshset(mesh)
+            current = mesh
             for i in range(max_iterations):
-                current_faces = ms.current_mesh().face_number()
-                if current_faces > self.max_face_limit:
-                    logger.warning(f"Face limit reached at iteration {i}")
+                if len(current.faces) > self.max_face_limit:
                     break
-
-                # Select faces with long edges
-                ms.apply_filter(
-                    "compute_selection_by_edge_length",
-                    threshold=edge_threshold,
+                # Use trimesh's subdivide_to_size
+                verts, faces = trimesh.remesh.subdivide_to_size(
+                    current.vertices, current.faces, max_edge=edge_threshold
                 )
-
-                # Subdivide selected faces using midpoint
-                try:
-                    ms.apply_filter("meshing_surface_subdivision_midpoint",
-                                    selectedonly=True)
-                except Exception:
-                    # Some versions don't support selectedonly
-                    ms.apply_filter("meshing_surface_subdivision_midpoint")
-
-            result = _meshset_to_trimesh(ms)
+                current = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
             logger.info(
                 f"Adaptive subdivision: {len(mesh.faces)} → "
-                f"{len(result.faces)} faces ({max_iterations} passes)"
+                f"{len(current.faces)} faces"
             )
-            return result
+            return current
         except Exception as e:
             logger.warning(f"Adaptive subdivision failed: {e}")
             return mesh

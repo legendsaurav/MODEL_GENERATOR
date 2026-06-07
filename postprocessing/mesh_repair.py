@@ -5,20 +5,20 @@ Comprehensive mesh cleaning: removes degenerate/duplicate faces,
 merges close vertices, removes isolated components (floaters),
 fixes normals, and fills small holes.
 
+Uses trimesh as the PRIMARY backend (no external dependencies).
+Optionally uses pymeshlab for enhanced repair if available and working.
+
 Dependencies:
     - trimesh
-    - pymeshlab
     - numpy
+    - pymeshlab (optional, for enhanced repair)
 
 Classes:
     MeshRepairer: All-in-one mesh repair pipeline.
-
-Functions:
-    trimesh_to_meshset: Convert trimesh → pymeshlab MeshSet.
-    meshset_to_trimesh: Convert pymeshlab MeshSet → trimesh.
 """
 
 import logging
+import os
 import tempfile
 from typing import Optional
 
@@ -27,47 +27,66 @@ import trimesh
 
 logger = logging.getLogger("model_generator_v2.postprocessing.mesh_repair")
 
-
-def trimesh_to_meshset(mesh: trimesh.Trimesh):
-    """Convert a trimesh.Trimesh to a pymeshlab.MeshSet.
-
-    Uses a temporary file for reliable conversion.
-
-    Args:
-        mesh: Input trimesh object.
-
-    Returns:
-        pymeshlab.MeshSet containing the mesh.
-    """
+# ── Pymeshlab availability check ───────────────────────────────────────────
+_PYMESHLAB_AVAILABLE = False
+try:
     import pymeshlab
-    ms = pymeshlab.MeshSet()
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        mesh.export(f.name)
-        ms.load_new_mesh(f.name)
-    return ms
+    # Test if the critical I/O plugin actually works
+    _test_ms = pymeshlab.MeshSet()
+    _PYMESHLAB_AVAILABLE = True
+    del _test_ms
+except Exception:
+    logger.info("pymeshlab not fully functional — using trimesh-only repair")
 
 
-def meshset_to_trimesh(ms) -> trimesh.Trimesh:
-    """Convert a pymeshlab.MeshSet to a trimesh.Trimesh.
+def _pymeshlab_roundtrip(mesh: trimesh.Trimesh, filters: list) -> Optional[trimesh.Trimesh]:
+    """Apply pymeshlab filters via numpy arrays (no temp files).
 
     Args:
-        ms: pymeshlab MeshSet with at least one mesh.
+        mesh: Input trimesh.
+        filters: List of (filter_name, kwargs) tuples.
 
     Returns:
-        trimesh.Trimesh object.
+        Processed mesh, or None if pymeshlab fails.
     """
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        ms.save_current_mesh(f.name)
-        result = trimesh.load(f.name, process=False)
-    return result
+    if not _PYMESHLAB_AVAILABLE:
+        return None
+    try:
+        ms = pymeshlab.MeshSet()
+        # Load directly from numpy arrays — no temp file needed
+        pm = pymeshlab.Mesh(
+            vertex_matrix=mesh.vertices.astype(np.float64),
+            face_matrix=mesh.faces.astype(np.int32),
+        )
+        ms.add_mesh(pm)
+
+        for filter_name, kwargs in filters:
+            ms.apply_filter(filter_name, **kwargs)
+
+        # Extract result from numpy arrays
+        result_mesh = ms.current_mesh()
+        verts = result_mesh.vertex_matrix()
+        faces = result_mesh.face_matrix()
+
+        if len(verts) == 0 or len(faces) == 0:
+            return None
+
+        return trimesh.Trimesh(
+            vertices=verts,
+            faces=faces,
+            process=False,
+        )
+    except Exception as e:
+        logger.debug(f"pymeshlab filter failed: {e}")
+        return None
 
 
 class MeshRepairer:
     """Comprehensive mesh repair operations.
 
-    Applies a series of cleaning filters to fix common mesh defects
-    produced by Marching Cubes extraction, including degenerate geometry,
-    duplicate elements, inconsistent normals, and small holes.
+    Uses trimesh as the primary backend. All operations work without
+    pymeshlab. When pymeshlab is available and working, enhanced
+    operations are used for better results.
 
     Args:
         min_component_face_ratio: Minimum face ratio for keeping
@@ -99,17 +118,23 @@ class MeshRepairer:
         Returns:
             Mesh with degenerate faces removed.
         """
-        try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter("meshing_remove_null_faces")
-            result = meshset_to_trimesh(ms)
+        # Try pymeshlab first
+        result = _pymeshlab_roundtrip(mesh, [("meshing_remove_null_faces", {})])
+        if result is not None:
             removed = len(mesh.faces) - len(result.faces)
             if removed > 0:
-                logger.info(f"Removed {removed} degenerate faces")
+                logger.info(f"Removed {removed} degenerate faces (pymeshlab)")
             return result
+
+        # Trimesh fallback
+        try:
+            mask = mesh.nondegenerate_faces()
+            mesh.update_faces(mask)
+            mesh.remove_unreferenced_vertices()
+            logger.info(f"Removed degenerate faces (trimesh), kept {len(mesh.faces)}")
         except Exception as e:
             logger.warning(f"Degenerate face removal failed: {e}")
-            return mesh
+        return mesh
 
     def remove_duplicate_faces(self, mesh: trimesh.Trimesh) -> trimesh.Trimesh:
         """Remove duplicate face definitions.
@@ -120,17 +145,22 @@ class MeshRepairer:
         Returns:
             Mesh with duplicate faces removed.
         """
-        try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter("meshing_remove_duplicate_faces")
-            result = meshset_to_trimesh(ms)
+        result = _pymeshlab_roundtrip(mesh, [("meshing_remove_duplicate_faces", {})])
+        if result is not None:
             removed = len(mesh.faces) - len(result.faces)
             if removed > 0:
-                logger.info(f"Removed {removed} duplicate faces")
+                logger.info(f"Removed {removed} duplicate faces (pymeshlab)")
             return result
+
+        # Trimesh fallback
+        try:
+            unique = mesh.unique_faces()
+            mesh.update_faces(unique)
+            mesh.remove_unreferenced_vertices()
+            logger.info(f"Removed duplicate faces (trimesh), kept {len(mesh.faces)}")
         except Exception as e:
             logger.warning(f"Duplicate face removal failed: {e}")
-            return mesh
+        return mesh
 
     def merge_duplicate_vertices(
         self, mesh: trimesh.Trimesh, tolerance: Optional[float] = None
@@ -144,22 +174,16 @@ class MeshRepairer:
         Returns:
             Mesh with merged vertices.
         """
+        # Trimesh merge is reliable and fast
         try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter(
-                "meshing_merge_close_vertices",
-                threshold=pymeshlab.PercentageValue(
-                    (tolerance or self.merge_tolerance) * 100
-                ),
-            )
-            result = meshset_to_trimesh(ms)
-            merged = len(mesh.vertices) - len(result.vertices)
+            original_v = len(mesh.vertices)
+            mesh.merge_vertices()
+            merged = original_v - len(mesh.vertices)
             if merged > 0:
                 logger.info(f"Merged {merged} duplicate vertices")
-            return result
         except Exception as e:
             logger.warning(f"Vertex merging failed: {e}")
-            return mesh
+        return mesh
 
     def remove_isolated_components(
         self, mesh: trimesh.Trimesh, min_face_ratio: Optional[float] = None
@@ -176,31 +200,47 @@ class MeshRepairer:
             Mesh with small components removed.
         """
         ratio = min_face_ratio or self.min_component_face_ratio
-        try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter(
-                "compute_selection_by_small_disconnected_components_per_face",
-                nbfaceratio=ratio,
-            )
-            ms.apply_filter(
-                "compute_selection_transfer_face_to_vertex",
-                inclusive=False,
-            )
-            ms.apply_filter("meshing_remove_selected_vertices_and_faces")
-            result = meshset_to_trimesh(ms)
+
+        # Try pymeshlab first
+        result = _pymeshlab_roundtrip(mesh, [
+            ("compute_selection_by_small_disconnected_components_per_face",
+             {"nbfaceratio": ratio}),
+            ("meshing_remove_selected_vertices_and_faces", {}),
+        ])
+        if result is not None:
             removed = len(mesh.faces) - len(result.faces)
             if removed > 0:
-                logger.info(f"Removed {removed} faces from small components")
+                logger.info(f"Removed {removed} faces from small components (pymeshlab)")
             return result
+
+        # Trimesh fallback: split into components, keep large ones
+        try:
+            components = mesh.split(only_watertight=False)
+            if len(components) <= 1:
+                return mesh
+
+            total_faces = len(mesh.faces)
+            min_faces = int(total_faces * ratio)
+            large_components = [
+                c for c in components if len(c.faces) >= min_faces
+            ]
+
+            if not large_components:
+                # Keep the largest component
+                large_components = [max(components, key=lambda c: len(c.faces))]
+
+            if len(large_components) < len(components):
+                mesh = trimesh.util.concatenate(large_components)
+                logger.info(
+                    f"Removed {len(components) - len(large_components)} "
+                    f"small components (trimesh)"
+                )
         except Exception as e:
             logger.warning(f"Component removal failed: {e}")
-            return mesh
+        return mesh
 
     def fix_normals(self, mesh: trimesh.Trimesh) -> trimesh.Trimesh:
         """Fix inconsistent face and vertex normals.
-
-        Re-orients faces for consistent normal direction and
-        recomputes vertex normals.
 
         Args:
             mesh: Input mesh.
@@ -209,18 +249,11 @@ class MeshRepairer:
             Mesh with corrected normals.
         """
         try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter("meshing_re_orient_faces_coherentely")
-            ms.apply_filter("compute_normal_per_vertex")
-            ms.apply_filter("compute_normal_per_face")
-            result = meshset_to_trimesh(ms)
-            logger.info("Normals fixed and recomputed")
-            return result
+            mesh.fix_normals()
+            logger.info("Normals fixed (trimesh)")
         except Exception as e:
             logger.warning(f"Normal fixing failed: {e}")
-            # Fallback to trimesh normal fixing
-            mesh.fix_normals()
-            return mesh
+        return mesh
 
     def fill_small_holes(
         self, mesh: trimesh.Trimesh, max_hole_edges: Optional[int] = None
@@ -235,20 +268,24 @@ class MeshRepairer:
             Mesh with small holes filled.
         """
         max_edges = max_hole_edges or self.max_hole_edges
-        try:
-            ms = trimesh_to_meshset(mesh)
-            ms.apply_filter(
-                "meshing_close_holes",
-                maxholesize=max_edges,
-            )
-            result = meshset_to_trimesh(ms)
+
+        # Try pymeshlab
+        result = _pymeshlab_roundtrip(mesh, [
+            ("meshing_close_holes", {"maxholesize": max_edges}),
+        ])
+        if result is not None:
             new_faces = len(result.faces) - len(mesh.faces)
             if new_faces > 0:
-                logger.info(f"Filled holes: added {new_faces} faces")
+                logger.info(f"Filled holes: added {new_faces} faces (pymeshlab)")
             return result
+
+        # Trimesh fallback
+        try:
+            mesh.fill_holes()
+            logger.info("Filled holes (trimesh)")
         except Exception as e:
             logger.warning(f"Hole filling failed: {e}")
-            return mesh
+        return mesh
 
     def __call__(self, mesh: trimesh.Trimesh) -> trimesh.Trimesh:
         """Run all repair operations in sequence.
@@ -280,11 +317,3 @@ class MeshRepairer:
             f"{len(mesh.faces)} faces"
         )
         return mesh
-
-
-# Needed for merge_duplicate_vertices
-try:
-    import pymeshlab
-except ImportError:
-    pymeshlab = None
-    logger.warning("pymeshlab not available — some repairs will be limited")

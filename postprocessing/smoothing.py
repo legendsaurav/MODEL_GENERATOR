@@ -5,37 +5,70 @@ Implements HC (Humphrey's Classes) Laplacian smoothing and Taubin
 (lambda-mu) smoothing to reduce surface noise while preserving
 volume and geometric features.
 
+Uses trimesh as the PRIMARY backend. Pymeshlab is used if available
+for enhanced Taubin smoothing.
+
 Dependencies:
     - trimesh
-    - pymeshlab
+    - numpy
+    - pymeshlab (optional)
 
 Classes:
     MeshSmoother: Applies HC or Taubin smoothing to meshes.
 """
 
 import logging
-import tempfile
+from typing import Optional
 
+import numpy as np
 import trimesh
 
 logger = logging.getLogger("model_generator_v2.postprocessing.smoothing")
 
-
-def _trimesh_to_meshset(mesh: trimesh.Trimesh):
-    """Convert trimesh → pymeshlab MeshSet via temp file."""
+# ── Pymeshlab availability check ───────────────────────────────────────────
+_PYMESHLAB_AVAILABLE = False
+try:
     import pymeshlab
-    ms = pymeshlab.MeshSet()
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        mesh.export(f.name)
-        ms.load_new_mesh(f.name)
-    return ms
+    _test_ms = pymeshlab.MeshSet()
+    _PYMESHLAB_AVAILABLE = True
+    del _test_ms
+except Exception:
+    logger.info("pymeshlab not fully functional — using trimesh-only smoothing")
 
 
-def _meshset_to_trimesh(ms) -> trimesh.Trimesh:
-    """Convert pymeshlab MeshSet → trimesh via temp file."""
-    with tempfile.NamedTemporaryFile(suffix=".ply", delete=False) as f:
-        ms.save_current_mesh(f.name)
-        return trimesh.load(f.name, process=False)
+def _pymeshlab_smooth(mesh: trimesh.Trimesh, filter_name: str, **kwargs) -> Optional[trimesh.Trimesh]:
+    """Apply a pymeshlab smoothing filter via numpy arrays.
+
+    Args:
+        mesh: Input trimesh.
+        filter_name: pymeshlab filter name.
+        **kwargs: Filter parameters.
+
+    Returns:
+        Smoothed mesh, or None if pymeshlab fails.
+    """
+    if not _PYMESHLAB_AVAILABLE:
+        return None
+    try:
+        ms = pymeshlab.MeshSet()
+        pm = pymeshlab.Mesh(
+            vertex_matrix=mesh.vertices.astype(np.float64),
+            face_matrix=mesh.faces.astype(np.int32),
+        )
+        ms.add_mesh(pm)
+        ms.apply_filter(filter_name, **kwargs)
+
+        result_mesh = ms.current_mesh()
+        verts = result_mesh.vertex_matrix()
+        faces = result_mesh.face_matrix()
+
+        if len(verts) == 0 or len(faces) == 0:
+            return None
+
+        return trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+    except Exception as e:
+        logger.debug(f"pymeshlab smoothing failed: {e}")
+        return None
 
 
 class MeshSmoother:
@@ -83,35 +116,41 @@ class MeshSmoother:
     ) -> trimesh.Trimesh:
         """Apply Taubin lambda-mu smoothing.
 
-        Alternates positive and negative Laplacian smoothing passes
-        to smooth the surface without shrinkage.
-
         Args:
             mesh: Input mesh.
-            iterations: Number of smoothing passes (each pass = lambda + mu).
+            iterations: Number of smoothing passes.
             lambda_factor: Positive smoothing strength (0-1).
             mu_factor: Negative smoothing strength (should be < -lambda).
 
         Returns:
             Smoothed mesh with preserved vertex count.
         """
-        try:
-            ms = _trimesh_to_meshset(mesh)
-            ms.apply_filter(
-                "apply_coord_taubin_smoothing",
-                stepsmoothnum=iterations,
-                lambda_=lambda_factor,
-                mu=mu_factor,
-            )
-            result = _meshset_to_trimesh(ms)
+        # Try pymeshlab
+        result = _pymeshlab_smooth(
+            mesh,
+            "apply_coord_taubin_smoothing",
+            stepsmoothnum=iterations,
+            lambda_=lambda_factor,
+            mu=mu_factor,
+        )
+        if result is not None:
             logger.info(
                 f"Taubin smoothing: {iterations} iterations, "
-                f"λ={lambda_factor}, μ={mu_factor}"
+                f"λ={lambda_factor}, μ={mu_factor} (pymeshlab)"
             )
             return result
+
+        # Trimesh fallback: standard Laplacian smoothing
+        try:
+            trimesh.smoothing.filter_laplacian(
+                mesh, iterations=iterations
+            )
+            logger.info(
+                f"Laplacian smoothing: {iterations} iterations (trimesh fallback)"
+            )
         except Exception as e:
             logger.warning(f"Taubin smoothing failed: {e}")
-            return mesh
+        return mesh
 
     def hc_laplacian_smooth(
         self,
@@ -120,10 +159,6 @@ class MeshSmoother:
     ) -> trimesh.Trimesh:
         """Apply HC (Humphrey's Classes) Laplacian smoothing.
 
-        Applies Laplacian smoothing with a correction step that
-        pushes vertices back toward their original positions,
-        reducing shrinkage while smoothing noise.
-
         Args:
             mesh: Input mesh.
             iterations: Number of HC smoothing passes.
@@ -131,20 +166,42 @@ class MeshSmoother:
         Returns:
             Smoothed mesh with preserved vertex count.
         """
+        # Try pymeshlab
+        if _PYMESHLAB_AVAILABLE:
+            try:
+                ms = pymeshlab.MeshSet()
+                pm = pymeshlab.Mesh(
+                    vertex_matrix=mesh.vertices.astype(np.float64),
+                    face_matrix=mesh.faces.astype(np.int32),
+                )
+                ms.add_mesh(pm)
+                for _ in range(iterations):
+                    ms.apply_filter("apply_coord_hc_laplacian_smoothing")
+
+                result_mesh = ms.current_mesh()
+                verts = result_mesh.vertex_matrix()
+                faces = result_mesh.face_matrix()
+
+                if len(verts) > 0 and len(faces) > 0:
+                    logger.info(f"HC Laplacian smoothing: {iterations} iters (pymeshlab)")
+                    return trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+            except Exception as e:
+                logger.debug(f"pymeshlab HC smoothing failed: {e}")
+
+        # Trimesh fallback: Humphrey smoothing
         try:
-            ms = _trimesh_to_meshset(mesh)
-            ms.apply_filter(
-                "apply_coord_hc_laplacian_smoothing",
+            trimesh.smoothing.filter_humphrey(
+                mesh, iterations=iterations
             )
-            # HC filter doesn't have a iterations param, apply multiple times
-            for _ in range(iterations - 1):
-                ms.apply_filter("apply_coord_hc_laplacian_smoothing")
-            result = _meshset_to_trimesh(ms)
-            logger.info(f"HC Laplacian smoothing: {iterations} iterations")
-            return result
+            logger.info(f"Humphrey smoothing: {iterations} iterations (trimesh fallback)")
         except Exception as e:
-            logger.warning(f"HC smoothing failed: {e}")
-            return mesh
+            # Last fallback: basic Laplacian
+            try:
+                trimesh.smoothing.filter_laplacian(mesh, iterations=iterations)
+                logger.info(f"Laplacian smoothing: {iterations} iterations (trimesh fallback)")
+            except Exception as e2:
+                logger.warning(f"HC smoothing failed: {e2}")
+        return mesh
 
     def __call__(
         self,
