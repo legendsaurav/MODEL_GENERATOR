@@ -28,7 +28,7 @@ Image → Background Removal → DINOv2 Conditioning → DiT Diffusion
 
 ### Installation
 ```bash
-git clone <repo-url> MODEL_GENERATOR_V2
+git clone legendsaurav/MODEL_GENERATOR_V2 MODEL_GENERATOR_V2
 cd MODEL_GENERATOR_V2
 pip install -r requirements.txt
 pip install -e .
