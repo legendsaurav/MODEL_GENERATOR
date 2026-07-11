@@ -1,0 +1,377 @@
+{
+  "version": "2.0",
+  "format": "CAD_Action_Language",
+  "generator": "generate_cad_v2",
+  "target_cad": "SolidWorks 2024+",
+  "timestamp": "2026-07-10T06:42:00+00:00",
+  "units": {
+    "length": "mm",
+    "angle": "degrees",
+    "mass": "kg"
+  },
+  "material": {
+    "name": "1060 Alloy",
+    "density": 2700,
+    "units": "kg/m^3"
+  },
+  "mesh_reference": "input.glb",
+  "construction_tree": [
+    {
+      "step": 0,
+      "feature_id": "base_001",
+      "feature_name": "Base Extrude",
+      "feature_type": "extrude_boss",
+      "solidworks_feature": "Boss-Extrude",
+      "sketch": {
+        "sketch_id": "sketch_000",
+        "plane": "XY",
+        "plane_offset": 0,
+        "profile": {
+          "type": "rectangle",
+          "center": [0, 0],
+          "width": 76.4321,
+          "height": 52.1187
+        },
+        "constraints": [
+          {"type": "centered_at_origin"},
+          {"type": "fully_defined"}
+        ],
+        "dimensions": [
+          {"type": "horizontal", "value": 76.4321, "units": "mm"},
+          {"type": "vertical", "value": 52.1187, "units": "mm"}
+        ]
+      },
+      "operation": {
+        "type": "mid_plane",
+        "depth": 30.5044,
+        "depth_units": "mm",
+        "direction": [0.0, 0.0, 1.0],
+        "draft": false
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureExtrusion3",
+        "params": {
+          "sd": true,
+          "flip": false,
+          "dir": true,
+          "d1": 15.2522,
+          "d2": 15.2522,
+          "dchk1": false,
+          "dchk2": false,
+          "ddir1": 0,
+          "ddir2": 0,
+          "dang1": 0,
+          "dang2": 0,
+          "offReverse1": false,
+          "offReverse2": false,
+          "translateSurface1": false,
+          "translateSurface2": false,
+          "merge": true,
+          "useFeatScope": true,
+          "useAutoSelect": true
+        },
+        "sketch_api": "SketchManager.CreateCenterRectangle"
+      },
+      "confidence": 0.912,
+      "notes": "Base body from opposing planar faces (area ratio: 0.38)"
+    },
+    {
+      "step": 1,
+      "feature_id": "boss_002",
+      "feature_name": "Boss-Extrude (cylinder)",
+      "feature_type": "extrude_boss",
+      "solidworks_feature": "Boss-Extrude",
+      "sketch": {
+        "sketch_id": "sketch_001",
+        "plane": "XY",
+        "plane_offset": 15.252,
+        "profile": {
+          "type": "circle",
+          "center": [22.5, 0.0],
+          "radius": 9.16,
+          "diameter": 18.32
+        },
+        "dimensions": [
+          {"type": "radius", "value": 9.16, "units": "mm"}
+        ]
+      },
+      "operation": {
+        "type": "blind",
+        "depth": 12.45,
+        "depth_units": "mm",
+        "direction": [0.0, 0.0, 1.0],
+        "draft": false
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureExtrusion3",
+        "sketch_api": "SketchManager.CreateCircle"
+      },
+      "confidence": 0.874,
+      "notes": "Cylindrical boss d=18.320 h=12.450"
+    },
+    {
+      "step": 2,
+      "feature_id": "boss_003",
+      "feature_name": "Boss-Extrude (cylinder)",
+      "feature_type": "extrude_boss",
+      "solidworks_feature": "Boss-Extrude",
+      "sketch": {
+        "sketch_id": "sketch_002",
+        "plane": "XY",
+        "plane_offset": 15.252,
+        "profile": {
+          "type": "circle",
+          "center": [-22.5, 0.0],
+          "radius": 9.16,
+          "diameter": 18.32
+        },
+        "dimensions": [
+          {"type": "radius", "value": 9.16, "units": "mm"}
+        ]
+      },
+      "operation": {
+        "type": "blind",
+        "depth": 12.45,
+        "depth_units": "mm",
+        "direction": [0.0, 0.0, 1.0],
+        "draft": false
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureExtrusion3",
+        "sketch_api": "SketchManager.CreateCircle"
+      },
+      "confidence": 0.861,
+      "notes": "Cylindrical boss d=18.320 h=12.450"
+    },
+    {
+      "step": 3,
+      "feature_id": "pocket_007",
+      "feature_name": "Pocket (35.20 x 20.60 x 10.50mm)",
+      "feature_type": "extrude_cut",
+      "solidworks_feature": "Cut-Extrude",
+      "sketch": {
+        "sketch_id": "sketch_003",
+        "plane": "XY",
+        "plane_offset": 8.125,
+        "profile": {
+          "type": "rectangle",
+          "center": [0.0, -15.0],
+          "width": 35.2,
+          "height": 20.6
+        }
+      },
+      "operation": {
+        "type": "blind",
+        "depth": 10.5,
+        "depth_units": "mm",
+        "direction": [0.0, 0.0, -1.0],
+        "draft": false
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureCut4",
+        "params": {
+          "sd": true,
+          "flip": false,
+          "dir": true,
+          "d1": 10.5,
+          "dchk1": false,
+          "ddir1": 0,
+          "dang1": 0,
+          "NormalCut": true
+        },
+        "sketch_api": "SketchManager.CreateCenterRectangle"
+      },
+      "confidence": 0.782,
+      "notes": "Pocket at h=8.125 (area change: -22.4%)"
+    },
+    {
+      "step": 4,
+      "feature_id": "pocket_008",
+      "feature_name": "Pocket (18.40 x 12.80 x 6.20mm)",
+      "feature_type": "extrude_cut",
+      "solidworks_feature": "Cut-Extrude",
+      "sketch": {
+        "sketch_id": "sketch_004",
+        "plane": "XY",
+        "plane_offset": 22.38,
+        "profile": {
+          "type": "rectangle",
+          "center": [0.0, 20.0],
+          "width": 18.4,
+          "height": 12.8
+        }
+      },
+      "operation": {
+        "type": "blind",
+        "depth": 6.2,
+        "depth_units": "mm",
+        "direction": [0.0, 0.0, -1.0],
+        "draft": false
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureCut4",
+        "params": {
+          "sd": true,
+          "flip": false,
+          "dir": true,
+          "d1": 6.2,
+          "dchk1": false,
+          "ddir1": 0,
+          "dang1": 0,
+          "NormalCut": true
+        },
+        "sketch_api": "SketchManager.CreateCenterRectangle"
+      },
+      "confidence": 0.715,
+      "notes": "Pocket at h=22.380 (area change: -15.8%)"
+    },
+    {
+      "step": 5,
+      "feature_id": "hole_004",
+      "feature_name": "Through Hole (d=8.500mm)",
+      "feature_type": "hole_wizard",
+      "solidworks_feature": "Hole Wizard",
+      "hole_spec": {
+        "hole_type": "straight_through",
+        "standard": "ANSI Metric",
+        "diameter": 8.5,
+        "radius": 4.25,
+        "depth_type": "through_all",
+        "depth": 30.5044
+      },
+      "position": {
+        "face_ref": "base_001:top_face",
+        "x": 22.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "solidworks_api": {
+        "method": "FeatureManager.HoleWizard5",
+        "params": {
+          "GenericHoleType": 0,
+          "StandardIndex": 2,
+          "FastenerTypeIndex": 0,
+          "SSize": "M9",
+          "EndType": 1,
+          "Depth": 30.5044,
+          "Value1": 0.0085
+        },
+        "alternative_method": "FeatureManager.FeatureCut4",
+        "alternative_sketch": {
+          "method": "SketchManager.CreateCircle",
+          "center": [22.5, 0.0],
+          "radius": 4.25
+        }
+      },
+      "confidence": 0.936,
+      "notes": "Through hole d=8.500"
+    },
+    {
+      "step": 6,
+      "feature_id": "hole_005",
+      "feature_name": "Through Hole (d=8.500mm)",
+      "feature_type": "hole_wizard",
+      "solidworks_feature": "Hole Wizard",
+      "hole_spec": {
+        "hole_type": "straight_through",
+        "standard": "ANSI Metric",
+        "diameter": 8.5,
+        "radius": 4.25,
+        "depth_type": "through_all",
+        "depth": 30.5044
+      },
+      "position": {
+        "face_ref": "base_001:top_face",
+        "x": -22.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "solidworks_api": {
+        "method": "FeatureManager.HoleWizard5",
+        "params": {
+          "GenericHoleType": 0,
+          "StandardIndex": 2,
+          "FastenerTypeIndex": 0,
+          "SSize": "M9",
+          "EndType": 1,
+          "Depth": 30.5044,
+          "Value1": 0.0085
+        },
+        "alternative_method": "FeatureManager.FeatureCut4",
+        "alternative_sketch": {
+          "method": "SketchManager.CreateCircle",
+          "center": [-22.5, 0.0],
+          "radius": 4.25
+        }
+      },
+      "confidence": 0.928,
+      "notes": "Through hole d=8.500"
+    },
+    {
+      "step": 7,
+      "feature_id": "hole_006",
+      "feature_name": "Blind Hole (d=5.000mm, depth=12.000mm)",
+      "feature_type": "hole_wizard",
+      "solidworks_feature": "Hole Wizard",
+      "hole_spec": {
+        "hole_type": "straight_blind",
+        "diameter": 5.0,
+        "radius": 2.5,
+        "depth_type": "blind",
+        "depth": 12.0
+      },
+      "position": {
+        "x": 0.0,
+        "y": 18.0,
+        "z": 15.252
+      },
+      "axis": [0.0, 0.0, -1.0],
+      "solidworks_api": {
+        "method": "FeatureManager.HoleWizard5",
+        "alternative_method": "FeatureManager.FeatureCut4"
+      },
+      "confidence": 0.845,
+      "notes": "Blind hole d=5.000 depth=12.000"
+    },
+    {
+      "step": 8,
+      "feature_id": "fillet_009",
+      "feature_name": "Fillet (R=2.000mm)",
+      "feature_type": "fillet",
+      "solidworks_feature": "Fillet",
+      "fillet_spec": {
+        "radius": 2.0,
+        "radius_units": "mm",
+        "type": "constant_radius",
+        "propagate_along_tangent": true
+      },
+      "edge_selection": {
+        "method": "by_radius_match",
+        "target_radius": 2.0,
+        "position": [0.0, 0.0, 30.504]
+      },
+      "solidworks_api": {
+        "method": "FeatureManager.FeatureFillet3",
+        "params": {
+          "Radius": 0.002,
+          "FeatureOptions": 1,
+          "OverflowType": 0
+        }
+      },
+      "confidence": 0.891,
+      "notes": "Fillet/round edge (r=2.000)"
+    }
+  ],
+  "summary": {
+    "total_operations": 9,
+    "base_features": 1,
+    "boss_features": 2,
+    "cut_features": 2,
+    "holes": 3,
+    "fillets": 1,
+    "chamfers": 0
+  },
+  "solidworks_macro_hint": "Use SolidWorks VBA/C# API: For each step in construction_tree, call the solidworks_api.method with the specified params. Create sketches on the specified planes using the profile geometry, then apply the operation."
+}

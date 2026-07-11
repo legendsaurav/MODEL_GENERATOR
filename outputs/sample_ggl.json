@@ -1,0 +1,190 @@
+{
+  "version": "2.0",
+  "generator": "generate_cad_v2",
+  "timestamp": "2026-07-10T06:42:00+00:00",
+  "source_image": "input.png",
+  "mesh_file": "input.glb",
+  "analysis_method": "surface_segmentation + cross_section + primitive_fitting",
+  "symmetry_planes": ["X", "Y"],
+  "mesh_stats": {
+    "extents": [76.4321, 52.1187, 30.5044],
+    "volume": 85432.1847,
+    "surface_area": 18723.4561,
+    "convexity_ratio": 0.7234,
+    "n_patches": 47
+  },
+  "nodes": [
+    {
+      "node_id": "base_001",
+      "node_type": "box",
+      "feature_type": "base_extrude",
+      "semantic_label": "Base body from opposing planar faces (area ratio: 0.38)",
+      "confidence": 0.912,
+      "position": [0.0, 0.0, 0.0],
+      "dimensions": {
+        "width": 76.4321,
+        "height": 52.1187,
+        "depth": 30.5044
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": false
+    },
+    {
+      "node_id": "boss_002",
+      "node_type": "cylinder",
+      "feature_type": "boss",
+      "semantic_label": "Cylindrical boss d=18.320 h=12.450",
+      "confidence": 0.874,
+      "position": [22.5, 0.0, 15.252],
+      "dimensions": {
+        "radius": 9.16,
+        "diameter": 18.32,
+        "height": 12.45
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": false
+    },
+    {
+      "node_id": "boss_003",
+      "node_type": "cylinder",
+      "feature_type": "boss",
+      "semantic_label": "Cylindrical boss d=18.320 h=12.450",
+      "confidence": 0.861,
+      "position": [-22.5, 0.0, 15.252],
+      "dimensions": {
+        "radius": 9.16,
+        "diameter": 18.32,
+        "height": 12.45
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": false
+    },
+    {
+      "node_id": "hole_004",
+      "node_type": "cylinder",
+      "feature_type": "through_hole",
+      "semantic_label": "Through hole d=8.500",
+      "confidence": 0.936,
+      "position": [22.5, 0.0, 0.0],
+      "dimensions": {
+        "radius": 4.25,
+        "diameter": 8.5,
+        "depth": 30.5044,
+        "is_through": true
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": true
+    },
+    {
+      "node_id": "hole_005",
+      "node_type": "cylinder",
+      "feature_type": "through_hole",
+      "semantic_label": "Through hole d=8.500",
+      "confidence": 0.928,
+      "position": [-22.5, 0.0, 0.0],
+      "dimensions": {
+        "radius": 4.25,
+        "diameter": 8.5,
+        "depth": 30.5044,
+        "is_through": true
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": true
+    },
+    {
+      "node_id": "hole_006",
+      "node_type": "cylinder",
+      "feature_type": "blind_hole",
+      "semantic_label": "Blind hole d=5.000 depth=12.000",
+      "confidence": 0.845,
+      "position": [0.0, 18.0, 15.252],
+      "dimensions": {
+        "radius": 2.5,
+        "diameter": 5.0,
+        "depth": 12.0,
+        "is_through": false
+      },
+      "axis": [0.0, 0.0, -1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": true
+    },
+    {
+      "node_id": "pocket_007",
+      "node_type": "box",
+      "feature_type": "pocket",
+      "semantic_label": "Pocket at h=8.125 (area change: -22.4%)",
+      "confidence": 0.782,
+      "position": [0.0, -15.0, 8.125],
+      "dimensions": {
+        "width": 35.2,
+        "height": 20.6,
+        "depth": 10.5
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": true
+    },
+    {
+      "node_id": "pocket_008",
+      "node_type": "box",
+      "feature_type": "pocket",
+      "semantic_label": "Pocket at h=22.380 (area change: -15.8%)",
+      "confidence": 0.715,
+      "position": [0.0, 20.0, 22.38],
+      "dimensions": {
+        "width": 18.4,
+        "height": 12.8,
+        "depth": 6.2
+      },
+      "axis": [0.0, 0.0, 1.0],
+      "sketch_plane": "XY",
+      "is_subtractive": true
+    },
+    {
+      "node_id": "fillet_009",
+      "node_type": "torus",
+      "feature_type": "fillet",
+      "semantic_label": "Fillet/round edge (r=2.000)",
+      "confidence": 0.891,
+      "position": [0.0, 0.0, 30.504],
+      "dimensions": {
+        "radius": 2.0,
+        "length": 76.432
+      },
+      "axis": [1.0, 0.0, 0.0],
+      "sketch_plane": "YZ",
+      "is_subtractive": false
+    },
+    {
+      "node_id": "fillet_010",
+      "node_type": "torus",
+      "feature_type": "fillet",
+      "semantic_label": "Fillet/round edge (r=1.500)",
+      "confidence": 0.867,
+      "position": [38.216, 0.0, 15.252],
+      "dimensions": {
+        "radius": 1.5,
+        "length": 52.119
+      },
+      "axis": [0.0, 1.0, 0.0],
+      "sketch_plane": "XZ",
+      "is_subtractive": false
+    }
+  ],
+  "edges": [
+    {"edge_id": "edge_boss_002", "source_id": "base_001", "target_id": "boss_002", "edge_type": "contains"},
+    {"edge_id": "edge_boss_003", "source_id": "base_001", "target_id": "boss_003", "edge_type": "contains"},
+    {"edge_id": "edge_hole_004", "source_id": "base_001", "target_id": "hole_004", "edge_type": "contains"},
+    {"edge_id": "edge_hole_005", "source_id": "base_001", "target_id": "hole_005", "edge_type": "contains"},
+    {"edge_id": "edge_hole_006", "source_id": "base_001", "target_id": "hole_006", "edge_type": "contains"},
+    {"edge_id": "edge_pocket_007", "source_id": "base_001", "target_id": "pocket_007", "edge_type": "contains"},
+    {"edge_id": "edge_pocket_008", "source_id": "base_001", "target_id": "pocket_008", "edge_type": "contains"},
+    {"edge_id": "edge_fillet_009", "source_id": "base_001", "target_id": "fillet_009", "edge_type": "contains"},
+    {"edge_id": "edge_fillet_010", "source_id": "base_001", "target_id": "fillet_010", "edge_type": "contains"}
+  ]
+}
