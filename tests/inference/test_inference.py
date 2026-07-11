@@ -37,7 +37,7 @@ class TestEndToEndInference:
         from MODEL_GENERATOR_V2.generation.pipeline import GeometryPipeline
         from MODEL_GENERATOR_V2.configs.presets import get_preset_config
 
-        config = get_preset_config("fast")
+        get_preset_config("fast")
 
         # This will attempt to download weights
         try:

@@ -14,7 +14,6 @@ Classes:
     ModelLoader: Loads and caches all pipeline submodels.
 """
 
-import os
 from pathlib import Path
 from typing import Dict, Optional, Union
 
@@ -139,6 +138,7 @@ class ModelLoader:
             Dictionary of loaded models.
         """
         # Find config file
+        cfg_path: Optional[Path]
         if config_path:
             cfg_path = Path(config_path)
         else:
@@ -282,7 +282,7 @@ class ModelLoader:
         for name, model in models.items():
             if name == "scheduler":
                 continue
-            if hasattr(model, "to"):
+            if isinstance(model, torch.nn.Module):
                 model.to(device=target, dtype=self.dtype)
                 model.eval()
 

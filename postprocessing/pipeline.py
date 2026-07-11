@@ -163,7 +163,7 @@ class PostProcessingPipeline:
         # Stage 6: Validation
         if self.config.enable_validation:
             t0 = time.perf_counter()
-            metrics = self.validator(mesh)
+            self.validator(mesh)
             timings["validation"] = time.perf_counter() - t0
             if verbose:
                 logger.info(

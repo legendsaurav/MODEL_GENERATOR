@@ -1,4 +1,6 @@
 # MODEL_GENERATOR_V2 - Exporters Package
+from typing import Callable, Dict
+
 from .base_exporter import MeshExporter
 from .glb_exporter import GLBExporter
 from .obj_exporter import OBJExporter
@@ -18,7 +20,7 @@ def get_exporter(fmt: str) -> MeshExporter:
     Raises:
         ValueError: If format is not supported.
     """
-    exporters = {
+    exporters: Dict[str, Callable[[], MeshExporter]] = {
         "glb": GLBExporter,
         "gltf": GLBExporter,
         "obj": OBJExporter,

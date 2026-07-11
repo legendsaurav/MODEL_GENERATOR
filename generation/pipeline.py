@@ -191,11 +191,6 @@ class GeometryPipeline:
         )
 
         from .model_loader import ModelLoader
-        from ..core.conditioner import ImageConditioner
-        from ..core.dit_model import Hunyuan3DDiT
-        from ..core.scheduler import FlowMatchingScheduler
-        from ..core.vae import ShapeVAE
-        from .diffusion_runner import DiffusionRunner
 
         loader = ModelLoader(
             device=device,

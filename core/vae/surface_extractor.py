@@ -56,7 +56,9 @@ class Latent2MeshOutput:
             process=False,
         )
         if self.mesh_v_normals is not None:
-            mesh.vertex_normals = self.mesh_v_normals
+            # trimesh exposes vertex_normals as a settable property at runtime;
+            # the stubs type it as a method, hence the targeted ignore.
+            mesh.vertex_normals = self.mesh_v_normals  # type: ignore[method-assign]
         return mesh
 
 
@@ -215,7 +217,7 @@ def export_to_trimesh(
         Corresponding trimesh.Trimesh object(s).
     """
     if isinstance(mesh_output, list):
-        results = []
+        results: "list[trimesh.Trimesh | None]" = []
         for m in mesh_output:
             if m is None:
                 results.append(None)

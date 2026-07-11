@@ -22,7 +22,7 @@ Classes:
     ShapeVAE: Full VAE with decode() and latents2mesh() methods.
 """
 
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import torch
@@ -33,7 +33,7 @@ from .attention_blocks import (
     FourierEmbedder,
     TransformerBlock,
 )
-from .surface_extractor import SurfaceExtractor, Latent2MeshOutput
+from .surface_extractor import SurfaceExtractor
 from ...utils.logging import get_logger
 from ...utils.timer import synchronize_timer
 

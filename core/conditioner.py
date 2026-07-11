@@ -21,8 +21,7 @@ Classes:
 
 import torch
 import torch.nn as nn
-from typing import Optional, Union
-from PIL import Image
+from typing import Optional
 
 from ..utils.logging import get_logger
 
@@ -150,7 +149,7 @@ class ImageConditioner(nn.Module):
             Condition embedding tensor of shape
             [B, num_patches, output_dim].
         """
-        if self.backbone is None:
+        if self.backbone is None or self.projection is None:
             raise RuntimeError(
                 "Conditioner not loaded. Call load_model() first."
             )
@@ -192,7 +191,7 @@ class ImageConditioner(nn.Module):
         Returns:
             Pooled embedding tensor of shape [B, output_dim].
         """
-        if self.backbone is None:
+        if self.backbone is None or self.projection is None:
             raise RuntimeError(
                 "Conditioner not loaded. Call load_model() first."
             )

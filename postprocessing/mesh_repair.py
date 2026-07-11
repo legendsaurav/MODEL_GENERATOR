@@ -18,8 +18,6 @@ Classes:
 """
 
 import logging
-import os
-import tempfile
 from typing import Optional
 
 import numpy as np

@@ -194,7 +194,7 @@ class MeshSmoother:
                 mesh, iterations=iterations
             )
             logger.info(f"Humphrey smoothing: {iterations} iterations (trimesh fallback)")
-        except Exception as e:
+        except Exception:
             # Last fallback: basic Laplacian
             try:
                 trimesh.smoothing.filter_laplacian(mesh, iterations=iterations)
@@ -206,8 +206,8 @@ class MeshSmoother:
     def __call__(
         self,
         mesh: trimesh.Trimesh,
-        method: str = None,
-        iterations: int = None,
+        method: Optional[str] = None,
+        iterations: Optional[int] = None,
     ) -> trimesh.Trimesh:
         """Apply smoothing with the specified method.
 

@@ -14,7 +14,7 @@ Classes:
     ImageProcessor: Validates and converts images to model tensors.
 """
 
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 from pathlib import Path
 
 import numpy as np
@@ -130,7 +130,7 @@ class ImageProcessor:
         if image.size != (self.target_size, self.target_size):
             image = image.resize(
                 (self.target_size, self.target_size),
-                Image.LANCZOS,
+                Image.Resampling.LANCZOS,
             )
         return image
 

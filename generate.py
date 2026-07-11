@@ -250,7 +250,7 @@ def main() -> None:
     config.validate()
 
     print(f"\n{'='*50}")
-    print(f"  MODEL_GENERATOR_V2 — 3D Mesh Generation")
+    print("  MODEL_GENERATOR_V2 — 3D Mesh Generation")
     print(f"{'='*50}")
     print(f"  Image:      {args.image}")
     print(f"  Preset:     {args.preset.upper()}")

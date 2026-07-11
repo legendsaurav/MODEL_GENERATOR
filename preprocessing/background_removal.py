@@ -14,7 +14,7 @@ Classes:
     BackgroundRemover: Removes backgrounds using rembg/U2Net.
 """
 
-from typing import Optional, Tuple, Union
+from typing import Tuple, Union
 from pathlib import Path
 
 import numpy as np
@@ -144,7 +144,7 @@ class BackgroundRemover:
 
         new_w = int(w * scale)
         new_h = int(h * scale)
-        cropped = cropped.resize((new_w, new_h), Image.LANCZOS)
+        cropped = cropped.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
         # Paste centered on background canvas
         canvas = Image.new("RGBA", (target_size, target_size), (*self.background_color, 255))

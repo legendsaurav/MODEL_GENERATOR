@@ -54,6 +54,8 @@ class DeviceManager:
     """
 
     _instance: Optional["DeviceManager"] = None
+    _initialized: bool = False
+    _device: Optional[torch.device] = None
 
     def __new__(cls) -> "DeviceManager":
         """Singleton pattern to ensure single device manager instance."""
@@ -66,7 +68,7 @@ class DeviceManager:
         if self._initialized:
             return
         self._initialized = True
-        self._device: Optional[torch.device] = None
+        self._device = None
         logger.info(f"CUDA available: {torch.cuda.is_available()}")
         if torch.cuda.is_available():
             logger.info(f"CUDA device: {torch.cuda.get_device_name(0)}")
@@ -117,7 +119,7 @@ class DeviceManager:
         if device.type == "cuda":
             idx = device.index or 0
             props = torch.cuda.get_device_properties(idx)
-            total_gb = props.total_mem / (1024 ** 3)
+            total_gb = props.total_memory / (1024 ** 3)
             free_mem, _ = torch.cuda.mem_get_info(idx)
             avail_gb = free_mem / (1024 ** 3)
             return DeviceInfo(

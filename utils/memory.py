@@ -15,7 +15,7 @@ Classes:
 
 import gc
 from contextlib import contextmanager
-from typing import Any, Generator, Optional
+from typing import Generator, Optional
 
 import torch
 import torch.nn as nn

@@ -14,7 +14,7 @@ Classes:
 
 import logging
 from dataclasses import dataclass, asdict
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import trimesh

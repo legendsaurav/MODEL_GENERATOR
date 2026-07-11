@@ -29,6 +29,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any, Dict
 
 # ---------------------------------------------------------------------------
 #  Module aliasing for Hunyuan3D v2.0 ↔ v2.1 compatibility
@@ -37,7 +38,6 @@ from pathlib import Path
 # but the installed hy3dgen package uses 'hy3dgen.shapegen'. We register
 # aliases BEFORE any hy3dgen imports to ensure the model loads correctly.
 
-import importlib
 
 def _setup_module_aliases():
     """Register hy3dshape → hy3dgen.shapegen module aliases.
@@ -129,7 +129,6 @@ def postprocess_mesh(mesh, target_faces=100_000, smooth_iterations=3):
         Cleaned trimesh.Trimesh
     """
     import trimesh
-    import numpy as np
 
     logger.info("Post-processing mesh (%d verts, %d faces)...",
                 len(mesh.vertices), len(mesh.faces))
@@ -272,7 +271,7 @@ def save_captured_states(bridge, output_dir: str, image_stem: str):
     logger.info("Saved hidden states: %s", pt_path)
 
     # Save metadata
-    meta = {
+    meta: Dict[str, Any] = {
         "timesteps": list(states.keys()),
         "layers_per_timestep": {},
         "total_tensors": 0,
@@ -317,7 +316,7 @@ def generate(args):
         device = args.device
 
     print(f"\n{'='*60}")
-    print(f"  MODEL_GENERATOR_V2 — 3D Mesh Generation")
+    print("  MODEL_GENERATOR_V2 — 3D Mesh Generation")
     print(f"{'='*60}")
     print(f"  Image:      {args.image}")
     print(f"  Preset:     {args.preset.upper()}")
@@ -430,7 +429,7 @@ def generate(args):
 
     total_time = time.perf_counter() - total_start
     print(f"\n{'='*60}")
-    print(f"  Generation complete!")
+    print("  Generation complete!")
     print(f"  Total time:  {total_time:.1f}s")
     print(f"  Vertices:    {len(mesh.vertices):,}")
     print(f"  Faces:       {len(mesh.faces):,}")

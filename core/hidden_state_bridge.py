@@ -40,7 +40,7 @@ Classes:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import torch
 import torch.nn as nn
@@ -54,7 +54,7 @@ logger: logging.Logger = get_logger("model_generator_v2.core.hidden_state_bridge
 #  Type aliases                                                              #
 # -------------------------------------------------------------------------- #
 
-_HookHandle = torch.utils.hooks.RemovableHook
+_HookHandle = torch.utils.hooks.RemovableHandle
 _LayerStates = Dict[str, torch.Tensor]
 """Mapping from layer name -> detached CPU tensor for one timestep."""
 _TimestepStates = Dict[str, _LayerStates]

@@ -52,9 +52,8 @@ import time
 import tempfile
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-import numpy as np
 import trimesh
 
 logging.basicConfig(
@@ -287,11 +286,11 @@ class ModelConverter:
         Returns:
             Absolute path to the exported file.
         """
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".stl")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
 
-        self.mesh.export(output_path, file_type="stl")
+        mesh.export(output_path, file_type="stl")
         size_mb = os.path.getsize(output_path) / (1024 * 1024)
         logger.info(f"Exported STL: {output_path} ({size_mb:.1f} MB)")
         return os.path.abspath(output_path)
@@ -357,7 +356,7 @@ class ModelConverter:
     def _export_step_cadquery(self, output_path: str) -> bool:
         """Try STEP export using CadQuery + OCP."""
         try:
-            import OCP
+            import OCP  # noqa: F401  (availability probe)
             from OCP.StlAPI import StlAPI_Reader
             from OCP.BRepBuilderAPI import BRepBuilderAPI_Sewing
             from OCP.STEPControl import (
@@ -370,8 +369,9 @@ class ModelConverter:
             logger.info("Exporting STEP via OCP (Open CASCADE)...")
 
             # Export mesh to temporary STL
+            mesh = self._check_mesh()
             with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as tmp:
-                self.mesh.export(tmp.name, file_type="stl")
+                mesh.export(tmp.name, file_type="stl")
                 tmp_stl = tmp.name
 
             # Read STL into OCC shape
@@ -408,14 +408,15 @@ class ModelConverter:
     def _export_step_freecad(self, output_path: str) -> bool:
         """Try STEP export using FreeCAD Python module."""
         try:
-            import FreeCAD
+            import FreeCAD  # noqa: F401  (availability probe)
             import Part
             import Mesh as FcMesh
 
             logger.info("Exporting STEP via FreeCAD...")
 
+            mesh = self._check_mesh()
             with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as tmp:
-                self.mesh.export(tmp.name, file_type="stl")
+                mesh.export(tmp.name, file_type="stl")
                 tmp_stl = tmp.name
 
             mesh_obj = FcMesh.Mesh(tmp_stl)
@@ -443,8 +444,9 @@ class ModelConverter:
 
             logger.info("Exporting STEP via gmsh...")
 
+            mesh = self._check_mesh()
             with tempfile.NamedTemporaryFile(suffix=".stl", delete=False) as tmp:
-                self.mesh.export(tmp.name, file_type="stl")
+                mesh.export(tmp.name, file_type="stl")
                 tmp_stl = tmp.name
 
             gmsh.initialize()
@@ -473,29 +475,29 @@ class ModelConverter:
 
     def to_obj(self, output_path: str) -> str:
         """Export to Wavefront OBJ format."""
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".obj")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
-        self.mesh.export(output_path, file_type="obj")
+        mesh.export(output_path, file_type="obj")
         logger.info(f"Exported OBJ: {output_path}")
         return os.path.abspath(output_path)
 
     def to_ply(self, output_path: str, binary: bool = True) -> str:
         """Export to Stanford PLY format."""
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".ply")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
         encoding = "binary_little_endian" if binary else "ascii"
-        self.mesh.export(output_path, file_type="ply", encoding=encoding)
+        mesh.export(output_path, file_type="ply", encoding=encoding)
         logger.info(f"Exported PLY: {output_path}")
         return os.path.abspath(output_path)
 
     def to_glb(self, output_path: str) -> str:
         """Export to binary GLB format."""
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".glb")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
-        self.mesh.export(output_path, file_type="glb")
+        mesh.export(output_path, file_type="glb")
         logger.info(f"Exported GLB: {output_path}")
         return os.path.abspath(output_path)
 
@@ -506,11 +508,11 @@ class ModelConverter:
         - SolidWorks 2019+ (File → Open)
         - Cura, PrusaSlicer, Microsoft 3D Builder
         """
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".3mf")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
         try:
-            self.mesh.export(output_path, file_type="3mf")
+            mesh.export(output_path, file_type="3mf")
             logger.info(f"Exported 3MF: {output_path}")
         except Exception as e:
             logger.warning(f"3MF export failed ({e}), falling back to STL")
@@ -519,10 +521,10 @@ class ModelConverter:
 
     def to_dae(self, output_path: str) -> str:
         """Export to Collada DAE format."""
-        self._check_mesh()
+        mesh = self._check_mesh()
         output_path = self._ensure_ext(output_path, ".dae")
         os.makedirs(os.path.dirname(os.path.abspath(output_path)) or ".", exist_ok=True)
-        self.mesh.export(output_path, file_type="dae")
+        mesh.export(output_path, file_type="dae")
         logger.info(f"Exported DAE: {output_path}")
         return os.path.abspath(output_path)
 
@@ -558,8 +560,7 @@ class ModelConverter:
 
     def info(self) -> str:
         """Return a formatted mesh information string."""
-        self._check_mesh()
-        m = self.mesh
+        m = self._check_mesh()
 
         bbox = m.bounding_box.extents if m.bounding_box else [0, 0, 0]
         try:
@@ -585,9 +586,10 @@ class ModelConverter:
 
     # ── Helpers ───────────────────────────────────────────────────────────
 
-    def _check_mesh(self) -> None:
+    def _check_mesh(self) -> "trimesh.Trimesh":
         if self.mesh is None:
             raise RuntimeError("No mesh loaded. Call load() first.")
+        return self.mesh
 
     @staticmethod
     def _ensure_ext(path: str, ext: str) -> str:
@@ -885,7 +887,7 @@ def main() -> None:
     total_start = time.perf_counter()
 
     print(f"\n{'═'*60}")
-    print(f"  MODEL CONVERTER — 3D Format Conversion Tool")
+    print("  MODEL CONVERTER — 3D Format Conversion Tool")
     print(f"{'═'*60}\n")
 
     # Handle sldprt special case

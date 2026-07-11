@@ -69,8 +69,6 @@ def retrieve_timesteps(
                 f"custom timestep schedules."
             )
         scheduler.set_timesteps(timesteps=timesteps, device=device, **kwargs)
-        timesteps = scheduler.timesteps
-        num_inference_steps = len(timesteps)
 
     elif sigmas is not None:
         sig = inspect.signature(scheduler.set_timesteps)
@@ -80,14 +78,14 @@ def retrieve_timesteps(
                 f"custom sigma schedules."
             )
         scheduler.set_timesteps(sigmas=sigmas, device=device, **kwargs)
-        timesteps = scheduler.timesteps
-        num_inference_steps = len(timesteps)
 
     else:
         scheduler.set_timesteps(num_inference_steps, device=device, **kwargs)
-        timesteps = scheduler.timesteps
 
-    return timesteps, num_inference_steps
+    # scheduler.timesteps is the authoritative tensor after configuration;
+    # derive the step count from it so both return values have concrete types.
+    result_timesteps = scheduler.timesteps
+    return result_timesteps, len(result_timesteps)
 
 
 class FlowMatchingScheduler:

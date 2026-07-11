@@ -2,8 +2,8 @@
 # Shape Variational Autoencoder components adapted from Hunyuan3D-2.1.
 # Handles encoding 3D surfaces to latents and decoding latents to meshes.
 
-from .shape_vae import ShapeVAE, Latent2MeshOutput
-from .surface_extractor import SurfaceExtractor
+from .shape_vae import ShapeVAE
+from .surface_extractor import SurfaceExtractor, Latent2MeshOutput
 from .attention_blocks import FourierEmbedder
 
 __all__ = [

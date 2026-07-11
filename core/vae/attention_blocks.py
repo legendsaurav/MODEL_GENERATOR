@@ -17,7 +17,7 @@ Classes:
 """
 
 import math
-from typing import Optional
+from typing import Optional, cast
 
 import torch
 import torch.nn as nn
@@ -86,7 +86,9 @@ class FourierEmbedder(nn.Module):
         # x: [..., D]
         # freq_bands: [F]
         # Outer product gives [..., D, F]
-        proj = x.unsqueeze(-1) * self.freq_bands
+        # freq_bands is a registered buffer (typed as Module by nn.Module); it is
+        # a Tensor at runtime, so cast for the type checker.
+        proj = x.unsqueeze(-1) * cast(torch.Tensor, self.freq_bands)
         # Flatten last two dims: [..., D*F]
         proj = proj.reshape(*x.shape[:-1], -1)
 
